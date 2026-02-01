@@ -1,0 +1,5 @@
+CMakeCache.txt
+build/
+.venv
+draft.cpp
+CmakeFiles/
