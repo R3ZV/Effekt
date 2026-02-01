@@ -22,7 +22,7 @@ FetchContent_MakeAvailable(libsndfile)
 
 # 4. Define source files
 set(SOURCE_FILES
-    proj.cpp
+    SVF.cpp
 )
 
 add_executable(AudioProcessor ${SOURCE_FILES})
