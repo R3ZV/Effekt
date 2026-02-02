@@ -3,10 +3,10 @@ SRC_DIRS    := ./src
 BUILD_DIR   := ./build
 BIN_DIR     := ./bin
 
-CXX         := clang
+CXX         := clang++
 
 CXXFLAGS    := -g -Wall -Wextra -O2 -std=c++20
-LDFLAGS     := -L/usr/local/lib
+LDFLAGS     := -ljack
 
 SRCS_CPP    := $(shell find $(SRC_DIRS) -name "*.cpp")
 
@@ -17,11 +17,9 @@ DEPS        := $(OBJS:.o=.d)
 
 TARGET      := $(BIN_DIR)/$(TARGET_NAME)
 
-.PHONY: all clean format
+.PHONY: run clean format tidy
 
-all: $(TARGET)
-
-run:
+run: $(TARGET)
 	./$(TARGET)
 
 $(TARGET): $(OBJS)
@@ -41,3 +39,6 @@ clean:
 
 format:
 	find . -iname "*.hpp" -o -iname "*.cpp" -o -iname "*.h" -o -iname "*.c" | xargs clang-format -i
+
+tidy:
+	find . \( -iname "*.cpp" -o -iname "*.hpp" \) -print0 | xargs -0 -r clang-tidy -p build -fix
