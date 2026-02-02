@@ -1,0 +1,194 @@
+\documentclass[14pt]{extarticle}
+
+% --------------------------------------------------
+% Packages
+% --------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{parskip} % For better paragraph spacing
+
+\geometry{margin=2cm}
+
+% --------------------------------------------------
+% Hyperref setup
+% --------------------------------------------------
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue,
+    pdftitle={Implementation of Different Filters}
+}
+
+% --------------------------------------------------
+% Listings setup
+% --------------------------------------------------
+\lstset{
+    backgroundcolor=\color{gray!10},
+    basicstyle=\ttfamily\footnotesize,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    breaklines=true,
+    tabsize=2,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black}
+}
+
+% --------------------------------------------------
+% Title
+% --------------------------------------------------
+\title{Effekt -- Implementation of Different Filters}
+\author{Lucan Cristian and Maracine Razvan}
+\date{\today}
+
+% --------------------------------------------------
+% Document
+% --------------------------------------------------
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{State Variable Filter (SVF)}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{Effekt/SVF.png}
+    \caption{SVF Discrete-Time Model (ZDF Topology)}
+    \label{fig:SVF_diagram}
+\end{figure}
+
+\subsection{Description}
+
+The State Variable Filter (SVF) is a highly versatile topology that simultaneously computes three primary filter outputs: low-pass ($y_{LP}$), high-pass ($y_{HP}$), and band-pass ($y_{BP}$). 
+
+Based on the Zero-Delay Feedback (ZDF) structure, the band-pass output is derived as:
+\[
+y_{BP} = g(x - 2Ry_{BP} - gy_{BP} - s_2) + s_1
+\]
+Solving for $y_{BP}$ yields the stable implementation formula:
+\[
+y_{BP} = \frac{g(x - s_2) + s_1}{1 + g(g + 2R)}
+\]
+From this, the low-pass and high-pass outputs are extracted:
+\begin{align*}
+y_{LP} &= g \cdot y_{BP} + s_2 \\
+y_{HP} &= x - 2R \cdot y_{BP} - y_{LP}
+\end{align*}
+
+This filter utilizes two trapezoidal integrators, represented as $g\xi + s_i$, where:
+\begin{itemize}
+    \item $g$: The zero-delay feedback gain.
+    \item $\xi$: The instantaneous input of the integrator.
+    \item $s_1, s_2$: The internal states (memory) of the integrators.
+\end{itemize}
+
+The parameter $g$ represents the cutoff frequency after \textbf{frequency prewarping}, which maps analog frequencies ($0$ to $\infty$) to digital frequencies ($0$ to Nyquist) using:
+\[
+g = \tan\left(\frac{\text{cutoff} \cdot \pi}{2}\right)
+\]
+
+\subsection{Results: Chester's Scream Analysis}
+
+Below are the spectrograms for the outputs of the SVF filter applied to the vocals of Chester Bennington from Linkin Park's \href{https://www.youtube.com/watch?v=Gd9OhYroLN0}{"Crawling"} (20s--34s).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.48\linewidth]{Effekt/band_pass_crawling.png}
+    \caption{Band-pass output (Cutoff: 0.15, Resonance: 0.5)}
+    \label{fig:svf_band_pass_ex}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.48\linewidth]{Effekt/low_pass_crawling.png}
+    \caption{Low-pass output (Cutoff: 0.15, Resonance: 0.5)}
+    \label{fig:svf_low_pass_ex}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.48\linewidth]{Effekt/high_pass_crawling.png}
+    \caption{High-pass output (Cutoff: 0.15, Resonance: 0.5)}
+    \label{fig:svf_high_pass_ex}
+\end{figure}
+
+\subsection{Resonance and Damping}
+
+The variable $R$ represents the \textbf{damping factor} (the mathematical inverse of resonance). It controls the amount of band-pass signal fed back into the summing junction. While the cutoff controls the frequency boundary, $R$ controls the amplitude peak at that boundary.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.48\linewidth]{Effekt/low_pass_crawling_low_res.png}
+    \caption{Low-pass (Resonance: 0.01)}
+    \label{fig:low_pass_crawling_low_res}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.48\linewidth]{Effekt/low_pass_crawling_super_high_res.png}
+    \caption{Low-pass (Resonance: 0.99) -- Note the resonant peak.}
+    \label{fig:low_pass_crawling_super_high_res}
+\end{figure}
+
+When resonance is high, an intense line appears at the cutoff frequency.
+
+\subsection{Secondary Filter Types}
+
+By linear combination of the primary SVF outputs, we can derive specialized filters.
+
+\subsubsection*{Band-Shelving Filter}
+Using a gain parameter $K$, we can boost or cut the band-pass region:
+\[ y_{S} = x + 2RK \cdot y_{BP} \]
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/band_shelving_crawling.png}
+    \caption{Band-shelving (Cutoff: 0.15, Res: 0.99, K: 0.5)}
+    \label{fig:shelving_ex}
+\end{figure}
+
+\subsubsection*{Notch Filter}
+A notch filter is achieved by setting $K = -1$, effectively subtracting the resonant peak from the input:
+\[ y_{N} = x - 2R \cdot y_{BP} \]
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/notch_crawling.png}
+    \caption{Notch filter (Cutoff: 0.15, Res: 0.99)}
+    \label{fig:notch_ex}
+\end{figure}
+
+\subsubsection*{All-Pass Filter}
+Setting $K = -2$ creates an all-pass response, affecting only phase:
+\[ y_{AP} = x - 4R \cdot y_{BP} \]
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/all_pass_crawling.png}
+    \caption{All-pass filter (Cutoff: 0.15, Res: 0.99)}
+    \label{fig:all_pass_ex}
+\end{figure}
+
+\subsubsection*{Peaking Filter}
+The peaking (or phase-flip) filter is derived from the difference of the low-pass and high-pass signals:
+\[ y_{P} = y_{LP} - y_{HP} \]
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/peaking_crawling.png}
+    \caption{Peaking filter output}
+    \label{fig:peaking_ex}
+\end{figure}
+
+
+\end{document}
