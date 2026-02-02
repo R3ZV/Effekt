@@ -3,3 +3,4 @@ build/
 .venv
 draft.cpp
 CmakeFiles/
+output/

@@ -39,19 +39,21 @@ input_path = curr_path / "input"
 
 # Filter
 filter = "SVF"
-cutoff = 0.15
-resonance = 0.5
+resonance = 0.99
+start_cutoff_sweep = 0.15
+end_cutoff_sweep = 0.15
 k_knob = 0.5
-params_str = f"{cutoff:.2f}_{resonance:.2f}_{k_knob:.2f}"
-filter_type = "band_shelving"
+params_str = f"{resonance:.2f}_{k_knob:.2f}_{start_cutoff_sweep:.2f}_{end_cutoff_sweep:.2f}"
+filter_type = "all_pass_filter"
 
 audio_name = "crawling_scream"
-audio_out_file_name = "audio.wav"
-# audio_in_file_name = f"{audio_name}.wav"
+audio_file_name = "audio.wav"
 
 audio_out_dir = output_path / filter / audio_name / params_str / filter_type
-audio_out_file_path = audio_out_dir / audio_out_file_name
-# audio_in_file_path = input_path / audio_in_file_name
+audio_out_file_path = audio_out_dir / audio_file_name
+
+audio_in_dir = input_path / audio_name
+audio_in_file_path = audio_in_dir / audio_file_name
 
 # Load the file
 sample_rate, samples = wavfile.read(audio_out_file_path)

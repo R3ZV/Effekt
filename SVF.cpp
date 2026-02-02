@@ -12,6 +12,7 @@
 #include <format> // Required for std::format
 #include <numbers>
 
+//TODO: Add the other filters as well
 namespace fs = std::filesystem;
 
 /*OTHER COOL FILTERS: 
@@ -85,6 +86,7 @@ enum PassFilterTypes{
     band_shelving = 3,
     notch_filter = 4,
     all_pass_filter = 5,
+    peaking_filter = 6
 };
 
 PassFilterTypes from_int(int val){
@@ -105,6 +107,8 @@ std::string to_string(PassFilterTypes f_type){
             return "notch_filter";
         case all_pass_filter:
             return "all_pass_filter";
+        case peaking_filter:
+            return "peaking_filter";
         default:
             return "";
     }
@@ -118,7 +122,7 @@ private:
 
 public:
     // cutoff: 0.0 to 1.0, resonance: 0.0 to 1.0, k_knob: 0.0 to 0.1 (only matters for filter "band_shelving")
-    float process(float input, float cutoff, float resonance, PassFilterTypes filter_type, float k_knob = 0) {
+    float process(float input, float cutoff, float resonance, PassFilterTypes filter_type, float shelving_fact = 0) {
         // g is the "elemental" frequency gain
         float gain = tanf(std::numbers::pi_v<float> * (cutoff * 0.5f)); 
         float damping = 2.0f - (2.0f * resonance); // k is the damping factor
@@ -141,17 +145,13 @@ public:
             case band_pass:
                 return v1;
             case band_shelving:
-                {// Map 0.0-1.0 to -12dB to +12dB
-                float gain_db = (k_knob - 0.5f) * 24.0f; 
-
-                // The book's formula for K
-                float K = std::pow(10.0f, gain_db / 20.0f) - 1.0f;
-                return v0 + (2.0f * damping * K * v1);
-                }
+                return v0 + 2.0f * damping * shelving_fact * v1;
             case notch_filter:
-                return v0 - 2.0f * damping * v1;
+                return v0 - 2.0f * damping * v1; // Just band_shelving with k=1
             case all_pass_filter:
-                return v0 - 4.0f * damping * v1;
+                return v0 - 4.0f * damping * v1; // Just band_shelving with k=2
+            case peaking_filter:
+                return std::min(1.0f, v2 - (v0 - damping * v1 - v2)); // it's just low_pass - high_pass and a wet cut!
             default:
                 std::cout << "Warning: Unknown filter_type: " << filter_type << std::endl;
                 break;
@@ -168,19 +168,21 @@ int main(){
 
     // Define params for i/o paths
     std::string audio_name = "crawling_scream";
-    std::string audio_out_file_name = "audio.wav";
+    std::string audio_file_name = "audio.wav";
     std::string filter_name = "SVF";
 
     // Define filter params
-    PassFilterTypes filter_type = band_shelving;
-    float cutoff = 0.15;
-    float resonance = 0.5;
+    PassFilterTypes filter_type = all_pass_filter;
+    float resonance = 0.99;
+    float start_cutoff_sweep = 0.15;
+    float end_cutoff_sweep = 0.15;
     float k_knob = 0.5; // Even if not used for the other filters, keep it
-    std::string params_str = std::format("{:.2f}", cutoff) + "_" +  std::format("{:.2f}", resonance) + "_" + std::format("{:.2f}", k_knob);
+    std::string params_str = std::format("{:.2f}", resonance) + "_" + std::format("{:.2f}", k_knob) + 
+                             "_" + std::format("{:.2f}", start_cutoff_sweep) + "_" + std::format("{:.2f}", end_cutoff_sweep);
 
     // Define i.o paths
-    fs::path audio_in_path = root_dir / "input" / "audio" / (audio_name + ".wav");
-    fs::path audio_out_path = root_dir / "output" / filter_name / audio_name / params_str / to_string(filter_type) / audio_out_file_name;
+    fs::path audio_in_path = root_dir / "input" / audio_name / audio_file_name;
+    fs::path audio_out_path = root_dir / "output" / filter_name / audio_name / params_str / to_string(filter_type) / audio_file_name;
 
     // Ensure the directory exists before writing
     fs::create_directories(audio_out_path.parent_path());
@@ -212,14 +214,17 @@ int main(){
     while ((read_count = fh.readFrames(buffer.data(), frame_count)) > 0) {
         int numChannels = fh.getChannels();
 
+        float cutoff_sweep = start_cutoff_sweep;
+        float cutoff_sweep_step = (end_cutoff_sweep - start_cutoff_sweep) / read_count;
         for (int i = 0; i < read_count; ++i) {
             if (numChannels == 2) {
                 // Sample L is at index i * 2, Sample R is at index i * 2 + 1
-                buffer[i * 2]     = filter_left.process(buffer[i * 2], cutoff, resonance, filter_type, k_knob);
-                buffer[i * 2 + 1] = filter_right.process(buffer[i * 2 + 1], cutoff, resonance, filter_type, k_knob);
+                buffer[i * 2]     = filter_left.process(buffer[i * 2], cutoff_sweep, resonance, filter_type, k_knob);
+                buffer[i * 2 + 1] = filter_right.process(buffer[i * 2 + 1], cutoff_sweep, resonance, filter_type, k_knob);
             } else {
-                buffer[i] = filter_right.process(buffer[i], cutoff, resonance, filter_type, k_knob);
+                buffer[i] = filter_right.process(buffer[i], cutoff_sweep, resonance, filter_type, k_knob);
             }
+            cutoff_sweep += cutoff_sweep_step;
         }
 
         std::cout << "[DEBUG]: Read: " << read_count << std::endl;
