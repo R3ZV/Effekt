@@ -12,6 +12,7 @@ To run the formatter: `cmake --build build --target format`
 - `cmake -B build; cmake --build build; ./build/AudioProcessor.exe`
 
 # References
-- https://en.wikipedia.org/wiki/Infinite_impulse_response
+
 - https://redwirez.com/pages/the-marshall-1960a-ir-pack
 - https://people.montefiore.uliege.be/josmalskyj/files/Gardner1995Efficient.pdf
+- https://www.native-instruments.com/fileadmin/ni_media/downloads/pdf/VAFilterDesign_2.1.0.pdf

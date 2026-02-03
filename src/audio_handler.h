@@ -17,20 +17,20 @@ class AudioFileHandler {
     }
 
     // opens the file to be read from
-    auto openRead(const std::string &path) -> bool;
+    auto open_read(const std::string &path) -> bool;
 
     // opens the file to write to
-    auto openWrite(const std::string &path) -> bool;
+    auto open_write(const std::string &path) -> bool;
 
     // Read a block of samples (Interleaved: L, R, L, R...)
-    auto readFrames(float *buffer, sf_count_t frames) -> sf_count_t;
+    auto read_frames(float *buffer, sf_count_t frames) -> sf_count_t;
 
     // Write a block of samples
-    auto writeFrames(float *buffer, sf_count_t frames) -> sf_count_t;
+    auto write_frames(float *buffer, sf_count_t frames) -> sf_count_t;
 
-    auto getChannels() const -> int { return sfInfo.channels; }
-    auto getSampleRate() const -> int { return sfInfo.samplerate; }
-    auto getTotalFrames() const -> sf_count_t { return sfInfo.frames; }
+    auto get_channels() const -> int { return sfInfo.channels; }
+    auto get_sample_rate() const -> int { return sfInfo.samplerate; }
+    auto get_total_frames() const -> sf_count_t { return sfInfo.frames; }
 
     auto close(bool in_file) -> void;
 };

@@ -11,16 +11,17 @@
 CabinetConvolver::CabinetConvolver(const std::string& ir_path, int block_size)
     : block_size(block_size) {
     AudioFileHandler ir_handler;
-    if (!ir_handler.openRead(ir_path)) {
+    if (!ir_handler.open_read(ir_path)) {
         throw std::runtime_error("CabinetConvolver: Failed to load IR: " +
                                  ir_path);
     }
 
-    sf_count_t total_frames = ir_handler.getTotalFrames();
-    int channels = ir_handler.getChannels();
+    sf_count_t total_frames = ir_handler.get_total_frames();
+    int channels = ir_handler.get_channels();
     std::vector<float> buffer(total_frames * channels);
 
-    sf_count_t frames_read = ir_handler.readFrames(buffer.data(), total_frames);
+    sf_count_t frames_read =
+        ir_handler.read_frames(buffer.data(), total_frames);
     if (frames_read < total_frames) {
         std::cout << "[WARNING] File shorter than expected. Read: "
                   << frames_read << " frames." << std::endl;

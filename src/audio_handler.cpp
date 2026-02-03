@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-auto AudioFileHandler::openRead(const std::string &path) -> bool {
+auto AudioFileHandler::open_read(const std::string &path) -> bool {
     file_in = sf_open(path.c_str(), SFM_READ, &sfInfo);
     if (!file_in) {
         std::cerr << "Error opening file: " << sf_strerror(nullptr)
@@ -14,7 +14,7 @@ auto AudioFileHandler::openRead(const std::string &path) -> bool {
     return true;
 }
 
-auto AudioFileHandler::openWrite(const std::string &path) -> bool {
+auto AudioFileHandler::open_write(const std::string &path) -> bool {
     file_out = sf_open(path.c_str(), SFM_WRITE, &sfInfo);
     if (!file_out) {
         std::cerr << "Error opening file: " << sf_strerror(nullptr)
@@ -24,12 +24,12 @@ auto AudioFileHandler::openWrite(const std::string &path) -> bool {
     return true;
 }
 
-auto AudioFileHandler::readFrames(float *buffer, sf_count_t frames)
+auto AudioFileHandler::read_frames(float *buffer, sf_count_t frames)
     -> sf_count_t {
     return sf_readf_float(file_in, buffer, frames);
 }
 
-auto AudioFileHandler::writeFrames(float *buffer, sf_count_t frames)
+auto AudioFileHandler::write_frames(float *buffer, sf_count_t frames)
     -> sf_count_t {
     return sf_writef_float(file_out, buffer, frames);
 }

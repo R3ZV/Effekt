@@ -41,14 +41,14 @@ input_path = curr_path / "input"
 
 # Filter
 filter = "SVF"
-resonance = 0.99
-start_cutoff_sweep = 0.15
-end_cutoff_sweep = 0.15
+resonance = 0.85
+start_cutoff_sweep = 450
+end_cutoff_sweep = 2200
 k_knob = 0.5
 params_str = (
     f"{resonance:.2f}_{k_knob:.2f}_{start_cutoff_sweep:.2f}_{end_cutoff_sweep:.2f}"
 )
-filter_type = "all_pass_filter"
+filter_type = "band_pass"
 
 audio_name = "crawling_scream"
 audio_file_name = "audio.wav"
@@ -75,4 +75,3 @@ if len(samples.shape) > 1:
         )
 else:
     draw_spectogram(samples, sample_rate, f"{audio_name}_mono", str(audio_out_dir))
-

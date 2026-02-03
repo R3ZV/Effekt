@@ -48,31 +48,31 @@ auto old_main() -> int {
     AudioFileHandler fh;
 
     // Open input file
-    if (!fh.openRead(audio_in_path.string())) {
+    if (!fh.open_read(audio_in_path.string())) {
         std::cout << "[ERROR]: Failed to open file " << audio_in_path
                   << std::endl;
         return -1;
     }
 
     // Open output file
-    if (!fh.openWrite(audio_out_path.string())) {
+    if (!fh.open_write(audio_out_path.string())) {
         std::cout << "[ERROR]: Failed to open file " << audio_out_path
                   << std::endl;
         return -1;
     }
 
-    std::cout << fh.getChannels() << std::endl;
+    std::cout << fh.get_channels() << std::endl;
 
     // Define buffer
     size_t frame_count = 4096;
-    std::vector<float> buffer(frame_count * fh.getChannels());
+    std::vector<float> buffer(frame_count * fh.get_channels());
     size_t read_count = 0;
 
     // Define filters
     SVF filter_left, filter_right;
 
-    while ((read_count = fh.readFrames(buffer.data(), frame_count)) > 0) {
-        int numChannels = fh.getChannels();
+    while ((read_count = fh.read_frames(buffer.data(), frame_count)) > 0) {
+        int numChannels = fh.get_channels();
 
         float cutoff_sweep = start_cutoff_sweep;
         float cutoff_sweep_step =
@@ -95,7 +95,7 @@ auto old_main() -> int {
 
         std::cout << "[DEBUG]: Read: " << read_count << std::endl;
 
-        size_t write_count = fh.writeFrames(buffer.data(), read_count);
+        size_t write_count = fh.write_frames(buffer.data(), read_count);
 
         std::cout << "[DEBUG]: Write: " << write_count << std::endl;
     }
@@ -109,12 +109,12 @@ auto main() -> int {
 
     AudioFileHandler fh;
 
-    if (!fh.openRead(input_file.string())) {
+    if (!fh.open_read(input_file.string())) {
         std::cerr << "[ERROR]: Failed to open file " << input_file << std::endl;
         return EXIT_FAILURE;
     }
 
-    if (!fh.openWrite(output_file.string())) {
+    if (!fh.open_write(output_file.string())) {
         std::cerr << "[ERROR]: Failed to open file " << output_file
                   << std::endl;
         return EXIT_FAILURE;
@@ -125,25 +125,25 @@ auto main() -> int {
     AMPFilter* cab = new CabinetConvolver("../samples/ir.wav", FRAMES_COUNT);
     filters.push_back(cab);
 
-    int channels = fh.getChannels();
+    int channels = fh.get_channels();
     std::cout << "[DBG]: Audio file has: " << channels << " channels."
               << std::endl;
 
     size_t read_count = 0;
     std::vector<float> input_buffer(FRAMES_COUNT * channels);
-    while ((read_count = fh.readFrames(input_buffer.data(), FRAMES_COUNT)) >
+    while ((read_count = fh.read_frames(input_buffer.data(), FRAMES_COUNT)) >
            0) {
         std::cout << "[DBG]: Read: " << read_count << std::endl;
 
         std::vector<float> process_buffer(
             input_buffer.begin(),
-            input_buffer.begin() + (read_count * fh.getChannels()));
+            input_buffer.begin() + (read_count * fh.get_channels()));
 
         for (auto filter : filters) {
             process_buffer = filter->apply(process_buffer);
         }
 
-        size_t write_count = fh.writeFrames(process_buffer.data(), read_count);
+        size_t write_count = fh.write_frames(process_buffer.data(), read_count);
 
         std::cout << "[DBG]: Wrote: " << write_count << std::endl;
     }
