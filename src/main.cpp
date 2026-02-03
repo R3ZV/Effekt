@@ -125,12 +125,12 @@ auto main() -> int {
     AMPFilter* cab = new CabinetConvolver("../samples/ir.wav", FRAMES_COUNT);
     filters.push_back(cab);
 
-    int channles = fh.getChannels();
-    std::cout << "[DBG]: Audio file has: " << fh.getChannels() << " channels."
+    int channels = fh.getChannels();
+    std::cout << "[DBG]: Audio file has: " << channels << " channels."
               << std::endl;
 
     size_t read_count = 0;
-    std::vector<float> input_buffer(FRAMES_COUNT * fh.getChannels());
+    std::vector<float> input_buffer(FRAMES_COUNT * channels);
     while ((read_count = fh.readFrames(input_buffer.data(), FRAMES_COUNT)) >
            0) {
         std::cout << "[DBG]: Read: " << read_count << std::endl;
