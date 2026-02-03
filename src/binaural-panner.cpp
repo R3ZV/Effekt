@@ -1,17 +1,18 @@
-#include <print>
 #include <cmath>
-#include <vector>
-#include <string>
 #include <filesystem>
 #include <format>
 #include <numbers>
-#include "AudioFileHandler.cpp"
-#include "SVF.cpp"
-#include "StereoToMono.cpp"
+#include <print>
+#include <string>
+#include <vector>
+#include <algorithm>
+
+#include "audio_handler.h"
+#include "svf.h"
 
 namespace fs = std::filesystem;
 
-/*OTHER COOL FILTERS: 
+/*OTHER COOL FILTERS:
 - FORMAT (SIMULATE HUMAN SOUND)
 - Bitcrusher (LO-FI)
 - Envelope follower
@@ -19,20 +20,24 @@ namespace fs = std::filesystem;
 - Binaural stuff
 */
 
-float linear_interpolation(float sample1, float sample2, float sample1_dist){
+auto linear_interpolation(float sample1, float sample2, float sample1_dist)
+    -> float {
     return sample1 * (1 - sample1_dist) + sample2 * sample1_dist;
 }
 
 // BIG BOOK: Spatial Audio by Francis Rumsey
 // Sections: 1.4, 3, 4.7
 class BinauralPanner {
-private:
-    static const int buffer_size = 4410; // 100ms at 44.1kHz
+   private:
+    static const int buffer_size = 4410;  // 100ms at 44.1kHz
     float delay_buffer_l[buffer_size] = {}, delay_buffer_r[buffer_size] = {};
     int write_index = 0;
     SVF svf_l, svf_r;
 public:
     BinauralPanner(){}
+
+   public:
+    BinauralPanner() {}
 
     float _get_simple_delay(float angle_rad, uint32_t sample_rate){
         // Calculate ITD based on the sine of the angle
@@ -89,8 +94,8 @@ public:
         float cutoff_r = std::lerp(normal_cutoff, shadow_cutoff, shadow_r);
         cutoff_r = std::lerp(cutoff_r, rear_cutoff, back_factor);
 
-        in_out_sample_l = svf_l.process(in_out_sample_l, cutoff_l, resonance, low_pass);
-        in_out_sample_r = svf_r.process(in_out_sample_r, cutoff_r, resonance, low_pass);
+        in_out_sample_l = svf_l.process(in_out_sample_l, cutoff_l, resonance, PassFilterTypes::low_pass);
+        in_out_sample_r = svf_r.process(in_out_sample_r, cutoff_r, resonance, PassFilterTypes::low_pass);
     }
 
     void _set_delay_buffers(float input){
