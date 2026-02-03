@@ -1,7 +1,7 @@
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 cmake_minimum_required(VERSION 4.0)
 project(AudioProcessorProject)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -22,7 +22,8 @@ FetchContent_MakeAvailable(libsndfile)
 
 # 4. Define source files
 set(SOURCE_FILES
-    SVF.cpp
+    # BinauralPanner.cpp
+    SVF_runner.cpp
 )
 
 add_executable(AudioProcessor ${SOURCE_FILES})
@@ -30,6 +31,9 @@ add_executable(AudioProcessor ${SOURCE_FILES})
 # Link the library
 # FetchContent creates a target usually named 'sndfile'
 target_link_libraries(AudioProcessor PRIVATE sndfile)
+
+# For std::print
+target_link_libraries(AudioProcessor PRIVATE -lstdc++exp)
 
 # Include directories 
 target_include_directories(AudioProcessor PRIVATE ${libsndfile_SOURCE_DIR}/include)

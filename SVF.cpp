@@ -1,19 +1,7 @@
-#include <iostream>
-#include <cmath>
-#include <sndfile.h>
-#include <vector>
+#include <print>
 #include <string>
-#include <iostream>
-#include <vector>
 #include <cmath>
-#include <algorithm>
-#include <filesystem>
-#include <string>
-#include <format> // Required for std::format
 #include <numbers>
-
-//TODO: Add the other filters as well
-namespace fs = std::filesystem;
 
 /*OTHER COOL FILTERS: 
 - FORMAT (SIMULATE HUMAN SOUND)
@@ -22,62 +10,6 @@ namespace fs = std::filesystem;
 - Moog filter
 - Binaural stuff
 */
-class AudioFileHandler {
-private:
-    SNDFILE *file_in, *file_out;
-    SF_INFO sfInfo;
-
-public:
-    AudioFileHandler() : file_in(nullptr), file_out(nullptr) { sfInfo = {0}; }
-    ~AudioFileHandler() { close(true); close(false);}
-
-    bool openRead(const std::string& path) {
-        file_in = sf_open(path.c_str(), SFM_READ, &sfInfo);
-        if (!file_in) {
-            std::cerr << "Error opening file: " << sf_strerror(NULL) << std::endl;
-            return false;
-        }
-        return true;
-    }
-
-    bool openWrite(const std::string& path) {
-        file_out = sf_open(path.c_str(), SFM_WRITE, &sfInfo);
-        if (!file_out) {
-            std::cerr << "Error opening file: " << sf_strerror(NULL) << std::endl;
-            return false;
-        }
-        return true;
-    }
-
-    // Read a block of samples (Interleaved: L, R, L, R...)
-    sf_count_t readFrames(float* buffer, sf_count_t frames) {
-        return sf_readf_float(file_in, buffer, frames);
-    }
-
-    // Write a block of samples
-    sf_count_t writeFrames(float* buffer, sf_count_t frames) {
-        return sf_writef_float(file_out, buffer, frames);
-    }
-
-    int getChannels() const { return sfInfo.channels; }
-    int getSampleRate() const { return sfInfo.samplerate; }
-    sf_count_t getTotalFrames() const { return sfInfo.frames; }
-
-    void close(bool in_file) {
-        if (in_file){
-            if (file_in) {
-                sf_close(file_in);
-                file_in = nullptr;
-            }
-        }
-        else{
-            if (file_out) {
-                sf_close(file_out);
-                file_out = nullptr;
-            }
-        }
-    }
-};
 
 enum PassFilterTypes{
     high_pass = 0,
@@ -153,84 +85,9 @@ public:
             case peaking_filter:
                 return std::min(1.0f, v2 - (v0 - damping * v1 - v2)); // it's just low_pass - high_pass and a wet cut!
             default:
-                std::cout << "Warning: Unknown filter_type: " << filter_type << std::endl;
+                std::print("Warning: Unknown filter_type: {}\n", static_cast<int>(filter_type));
                 break;
         }
         return 0;
     }
 };
-
-int main(){
-    std::cout << "[DEBUG]: HELLO FROM MAIN" << std::endl;
-    // Define root path
-    std::string curr_file = __FILE_NAME__;
-    fs::path root_dir = fs::path(__FILE__).parent_path();
-
-    // Define params for i/o paths
-    std::string audio_name = "crawling_scream";
-    std::string audio_file_name = "audio.wav";
-    std::string filter_name = "SVF";
-
-    // Define filter params
-    PassFilterTypes filter_type = all_pass_filter;
-    float resonance = 0.99;
-    float start_cutoff_sweep = 0.15;
-    float end_cutoff_sweep = 0.15;
-    float k_knob = 0.5; // Even if not used for the other filters, keep it
-    std::string params_str = std::format("{:.2f}", resonance) + "_" + std::format("{:.2f}", k_knob) + 
-                             "_" + std::format("{:.2f}", start_cutoff_sweep) + "_" + std::format("{:.2f}", end_cutoff_sweep);
-
-    // Define i.o paths
-    fs::path audio_in_path = root_dir / "input" / audio_name / audio_file_name;
-    fs::path audio_out_path = root_dir / "output" / filter_name / audio_name / params_str / to_string(filter_type) / audio_file_name;
-
-    // Ensure the directory exists before writing
-    fs::create_directories(audio_out_path.parent_path());
-
-    AudioFileHandler fh;
-
-    // Open input file    
-    if (!fh.openRead(audio_in_path.string())){
-        std::cout << "[ERROR]: Failed to open file " << audio_in_path << std::endl;
-        return -1;
-    }
-
-    // Open output file
-    if (!fh.openWrite(audio_out_path.string())){
-        std::cout << "[ERROR]: Failed to open file " << audio_out_path << std::endl;
-        return -1;
-    }
-
-    std::cout << fh.getChannels() << std::endl;
-
-    // Define buffer
-    size_t frame_count = 4096;
-    std::vector<float> buffer(frame_count * fh.getChannels()); 
-    size_t read_count = 0;
-
-    // Define filters
-    SVF filter_left, filter_right;
-
-    while ((read_count = fh.readFrames(buffer.data(), frame_count)) > 0) {
-        int numChannels = fh.getChannels();
-
-        float cutoff_sweep = start_cutoff_sweep;
-        float cutoff_sweep_step = (end_cutoff_sweep - start_cutoff_sweep) / read_count;
-        for (int i = 0; i < read_count; ++i) {
-            if (numChannels == 2) {
-                // Sample L is at index i * 2, Sample R is at index i * 2 + 1
-                buffer[i * 2]     = filter_left.process(buffer[i * 2], cutoff_sweep, resonance, filter_type, k_knob);
-                buffer[i * 2 + 1] = filter_right.process(buffer[i * 2 + 1], cutoff_sweep, resonance, filter_type, k_knob);
-            } else {
-                buffer[i] = filter_right.process(buffer[i], cutoff_sweep, resonance, filter_type, k_knob);
-            }
-            cutoff_sweep += cutoff_sweep_step;
-        }
-
-        std::cout << "[DEBUG]: Read: " << read_count << std::endl;
-        
-        size_t write_count = fh.writeFrames(buffer.data(), read_count);
-
-        std::cout << "[DEBUG]: Write: " << write_count << std::endl;
-    }
-}
