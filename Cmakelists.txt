@@ -22,8 +22,9 @@ FetchContent_MakeAvailable(libsndfile)
 
 # 4. Define source files
 set(SOURCE_FILES
-    # BinauralPanner.cpp
-    SVF_runner.cpp
+    BinauralPanner_runner.cpp
+    # SVF_runner.cpp
+    # StereoToMono_runner.cpp
 )
 
 add_executable(AudioProcessor ${SOURCE_FILES})

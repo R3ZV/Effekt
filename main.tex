@@ -50,7 +50,7 @@
 % Title
 % --------------------------------------------------
 \title{Effekt -- Implementation of Different Filters}
-\author{Lucan Cristian and Maracine Razvan}
+\author{Signal Processing Project}
 \date{\today}
 
 % --------------------------------------------------
@@ -66,7 +66,7 @@
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\linewidth]{Effekt/SVF.png}
+    \includegraphics[width=0.7\linewidth]{Effekt/SVF/SVF.png}
     \caption{SVF Discrete-Time Model (ZDF Topology)}
     \label{fig:SVF_diagram}
 \end{figure}
@@ -107,21 +107,21 @@ Below are the spectrograms for the outputs of the SVF filter applied to the voca
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.48\linewidth]{Effekt/band_pass_crawling.png}
+    \includegraphics[width=0.48\linewidth]{Effekt/SVF/band_pass_crawling.png}
     \caption{Band-pass output (Cutoff: 0.15, Resonance: 0.5)}
     \label{fig:svf_band_pass_ex}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.48\linewidth]{Effekt/low_pass_crawling.png}
+    \includegraphics[width=0.48\linewidth]{Effekt/SVF/low_pass_crawling.png}
     \caption{Low-pass output (Cutoff: 0.15, Resonance: 0.5)}
     \label{fig:svf_low_pass_ex}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.48\linewidth]{Effekt/high_pass_crawling.png}
+    \includegraphics[width=0.48\linewidth]{Effekt/SVF/high_pass_crawling.png}
     \caption{High-pass output (Cutoff: 0.15, Resonance: 0.5)}
     \label{fig:svf_high_pass_ex}
 \end{figure}
@@ -132,21 +132,21 @@ The variable $R$ represents the \textbf{damping factor} (the mathematical invers
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.48\linewidth]{Effekt/low_pass_crawling_low_res.png}
+    \includegraphics[width=0.48\linewidth]{Effekt/SVF/low_pass_crawling_low_res.png}
     \caption{Low-pass (Resonance: 0.01)}
     \label{fig:low_pass_crawling_low_res}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.48\linewidth]{Effekt/low_pass_crawling_super_high_res.png}
+    \includegraphics[width=0.48\linewidth]{Effekt/SVF/low_pass_crawling_super_high_res.png}
     \caption{Low-pass (Resonance: 0.99) -- Note the resonant peak.}
     \label{fig:low_pass_crawling_super_high_res}
 \end{figure}
 
 When resonance is high, an intense line appears at the cutoff frequency.
 
-\subsection{Secondary Filter Types}
+\section{Secondary Filter Types}
 
 By linear combination of the primary SVF outputs, we can derive specialized filters.
 
@@ -155,7 +155,7 @@ Using a gain parameter $K$, we can boost or cut the band-pass region:
 \[ y_{S} = x + 2RK \cdot y_{BP} \]
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\linewidth]{Effekt/band_shelving_crawling.png}
+    \includegraphics[width=0.5\linewidth]{Effekt/SVF/band_shelving_crawling.png}
     \caption{Band-shelving (Cutoff: 0.15, Res: 0.99, K: 0.5)}
     \label{fig:shelving_ex}
 \end{figure}
@@ -165,7 +165,7 @@ A notch filter is achieved by setting $K = -1$, effectively subtracting the reso
 \[ y_{N} = x - 2R \cdot y_{BP} \]
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\linewidth]{Effekt/notch_crawling.png}
+    \includegraphics[width=0.5\linewidth]{Effekt/SVF/notch_crawling.png}
     \caption{Notch filter (Cutoff: 0.15, Res: 0.99)}
     \label{fig:notch_ex}
 \end{figure}
@@ -175,7 +175,7 @@ Setting $K = -2$ creates an all-pass response, affecting only phase:
 \[ y_{AP} = x - 4R \cdot y_{BP} \]
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\linewidth]{Effekt/all_pass_crawling.png}
+    \includegraphics[width=0.5\linewidth]{Effekt/SVF/all_pass_crawling.png}
     \caption{All-pass filter (Cutoff: 0.15, Res: 0.99)}
     \label{fig:all_pass_ex}
 \end{figure}
@@ -185,10 +185,97 @@ The peaking (or phase-flip) filter is derived from the difference of the low-pas
 \[ y_{P} = y_{LP} - y_{HP} \]
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.5\linewidth]{Effekt/peaking_crawling.png}
+    \includegraphics[width=0.5\linewidth]{Effekt/SVF/peaking_crawling.png}
     \caption{Peaking filter output}
     \label{fig:peaking_ex}
 \end{figure}
 
+\section{Binaural Rotation}
 
+This implementation is not a spectral filter, but rather a spatialization technique designed to simulate a monaural sound source moving horizontally ($360^{\circ}$ azimuth) around a listener's head. By transforming a mono input into a stereo output, we simulate the two primary cues used in human sound localization: Interaural Time Difference (ITD) and Interaural Level Difference (ILD).
+
+\subsection{Interaural Time Difference (ITD)}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/Binaural/itd.png}
+    \caption{Geometric representation of ITD based on the spherical head model.}
+    \label{fig:itd_diagram}
+\end{figure}
+
+ITD represents the time delay incurred because the signal must travel different distances to reach each ear based on the source's position. As seen in Figure \ref{fig:itd_diagram}, a signal originating from the right will reach the right ear significantly earlier than the left.
+
+Based on Woodworth’s formula, the time delay for a spherical head is calculated as:
+
+\begin{equation}
+ITD = \frac{r}{c}(\theta + \sin\theta)
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item \textbf{$r$} is the radius of the listener's head (typically $\approx 0.0875$ m).
+    \item \textbf{$c$} is the speed of sound (approximately $343$ m/s).
+    \item \textbf{$\theta$} is the azimuth angle in radians ($0$ radians being directly in front).
+\end{itemize}
+
+The $\sin\theta$ term accounts for the direct line-of-sight path to the near ear, while the $\theta$ term represents the additional distance the sound wave must travel as it diffracts around the curved surface of the head to reach the "shadowed" far ear. In this implementation, the delay is applied only to the ear further from the source; for example, if $\sin(\theta) > 0$ (source in the right hemisphere), a delay is applied to the left channel.
+
+\subsection{Interaural Level Difference (ILD)}
+
+ILD models the variation in sound pressure level (amplitude) reaching each ear. The ear closer to the source perceives a higher amplitude, while the further ear perceives a lower amplitude due to the "head shadow" effect. To maintain a natural perception of volume during rotation, a Constant Power Panning law is utilized:
+
+\begin{align}
+G_{left} &= \cos\left(\frac{\theta}{2} + \frac{\pi}{4}\right) \\
+G_{right} &= \sin\left(\frac{\theta}{2} + \frac{\pi}{4}\right)
+\end{align}
+
+These formulas leverage the trigonometric identity $\sin^2\theta + \cos^2\theta = 1$ to ensure that the total perceived power remains constant regardless of the angle. A $45^{\circ}$ ($\pi/4$) phase shift is applied to the coordinate system to ensure that at $\theta = 0$ (center), both gains are equal to $\approx 0.707$ (-3 dB), creating a stable phantom center.
+
+\subsubsection{Acoustic shadow}
+
+The human head blocks high frequencies and lets lower frequencies pass just like a low pass filter when the sound is further from the ear. This is especially true when it comes from behind(most notably the pina blocks back sounds by design).
+
+For this two low pass filters (coming from a SVF) are used, one for the left, one for the right ear. The cutoffs for the filters are defined as follows:
+
+\begin{itemize}
+    \item \textbf{normal cutoff}: 0.99 (transparent)
+    \item \textbf{shadow cutoff}: 0.35 (shadow effect based on whether the sound is left or right) 
+    \item \textbf{rear cutoff}: 0.2 (amplified shadow effect when in the rear side)
+\end{itemize}
+
+The cutoff "sweeped" from normal to shadow and from shadow to rear based on the left factor($\sin \theta$), right factor ($-\sin \theta$) and the rear factor ($(1 - \cos \theta)*0.5$) using linear interpolation. First sweeping from normal cutoff to side cutoff using the side factor and then from the result of that to the rear cutoff using the rear factor.
+
+\subsection{Results}
+
+Applying this on the same input as the SVF' here are the spectograms for the binaural rotation:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/Binaural/init_crawling_ch_0.png}
+    \caption{Binaural rotation without svf low pass filtering left channel}
+    \label{fig:init_crawling_ch_0}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/Binaural/init_crawling_ch_1.png}
+    \caption{Binaural rotation without svf low pass filtering right channel}
+    \label{fig:init_crawling_ch_1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/Binaural/svf_crawling_ch_0.png}
+    \caption{Binaural rotation with svf low pass filtering left channel}
+    \label{fig:svf_crawling_ch_0}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/Binaural/svf_crawling_ch1.png}
+    \caption{Binaural rotation with svf low pass filtering right channel}
+    \label{fig:svf_crawling_ch_1}
+\end{figure}
+
+Most notable are the difference in phase between the channels and that for the version that uses low pass filtering we see the frequencies steadily decrease and increase. 
 \end{document}
