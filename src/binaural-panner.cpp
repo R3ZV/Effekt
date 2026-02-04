@@ -5,8 +5,10 @@
 #include <print>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "audio_handler.h"
+#include "svf.h"
 
 namespace fs = std::filesystem;
 
@@ -18,128 +20,119 @@ namespace fs = std::filesystem;
 - Binaural stuff
 */
 
-auto linear_interpolation(float sample1, float sample2, float sample1_dist)
-    -> float {
-    return sample1 * (1 - sample1_dist) + sample2 * sample1_dist;
-}
-
 // BIG BOOK: Spatial Audio by Francis Rumsey
-// Sections: 1.4, 3, 4.7
 class BinauralPanner {
-   private:
+private:
     static const int buffer_size = 4410;  // 100ms at 44.1kHz
     float delay_buffer_l[buffer_size] = {}, delay_buffer_r[buffer_size] = {};
     int write_index = 0;
+    SVF svf_l, svf_r;
+public:
+    BinauralPanner(){}
 
-   public:
-    BinauralPanner() {}
+    float _get_simple_delay(float angle_rad, uint32_t sample_rate){
+        // Calculate ITD based on the sine of the angle
+        float max_delay_samples = 0.00065f * sample_rate;
+        float itd_offset = std::sin(angle_rad) * max_delay_samples;
 
-    auto process(float input, float angle_rad, float& out_l, float& out_r,
-                 float sample_rate) -> void {
-        // Calculate ILD (Gain)
-        // TODO: Unused
-        // float gain_l = std::cos(angle_rad * 0.5f);
-        // float gain_r = std::sin(angle_rad * 0.5f);
+        return itd_offset;
+    }
 
-        // Clamping to absolute values to ensure smoothness
+    float _get_woodworth_delay(float relative_angle_rad, uint32_t sample_rate) {
+        const float c = 340.0f;     // Speed of sound 
+        const float r = 0.0875f;    // Average head radius
 
-        // TODO: These are unused
-        // gain_l = std::max(0.0f, std::abs(gain_l));
-        // gain_r = std::max(0.0f, std::abs(gain_r));
+        float theta = std::abs(relative_angle_rad);
 
-        // Calculate ITD (Delay in samples)
-        // Max delay is ~0.66ms -> ~29 samples at 44.1kHz
-        float max_delay_samples = 0.00066f * sample_rate;
-        float delay_l = (angle_rad > 0) ? (sin(angle_rad) * max_delay_samples)
-                                        : 0;
-        float delay_r =
-            (angle_rad < 0) ? (fabs(sin(angle_rad)) * max_delay_samples) : 0;
+        // Woodworth's Formula
+        float itd_seconds = (r * (theta + std::sin(theta))) / c;
+        return itd_seconds * (float)sample_rate;
+    }
 
-        // Write to Buffers
+    // Calculates the delayed "write_index" element using interpolation
+    float _read_with_interpolation(float* buf, float delay) {
+        float read_pos = (float)write_index - delay;
+        float wrapped = std::fmod(read_pos, (float)buffer_size);
+        
+        if (wrapped < 0) 
+            wrapped += buffer_size;
+        
+        int i1 = (int)std::floor(wrapped);
+        int i2 = (i1 + 1) % buffer_size;
+        return std::lerp(buf[i1], buf[i2], wrapped - i1);
+    }
+
+    void _apply_svf(float sin_val, float cos_val, float& in_out_sample_l, float& in_out_sample_r) {
+        // Calculate a Front-Back factor (0.0 = front, 1.0 = back) 
+        float back_factor = std::clamp((1.0f - cos_val) * 0.5f, 0.0f, 1.0f);
+
+        // Calculate Side factors (0.0 = near, 1.0 = far/shadowed)
+        // For Left ear, sin_val = 1 is "far" (right side).
+        float shadow_l = std::clamp(sin_val, 0.0f, 1.0f); 
+        // For Right ear, sin_val = -1 is "far" (left side).
+        float shadow_r = std::clamp(-sin_val, 0.0f, 1.0f);
+
+        // Define cutoffs and resonance
+        float normal_cutoff = 0.99f;
+        float shadow_cutoff = 0.35f;
+        float rear_cutoff = 0.20f;
+        float resonance = 0.5;
+
+        // Smoothly interpolate the cutoffs
+        float cutoff_l = std::lerp(normal_cutoff, shadow_cutoff, shadow_l);
+        cutoff_l = std::lerp(cutoff_l, rear_cutoff, back_factor);
+
+        float cutoff_r = std::lerp(normal_cutoff, shadow_cutoff, shadow_r);
+        cutoff_r = std::lerp(cutoff_r, rear_cutoff, back_factor);
+
+        in_out_sample_l = svf_l.process(in_out_sample_l, cutoff_l, resonance, PassFilterTypes::low_pass);
+        in_out_sample_r = svf_r.process(in_out_sample_r, cutoff_r, resonance, PassFilterTypes::low_pass);
+    }
+
+    void _set_delay_buffers(float input){
         delay_buffer_l[write_index] = input;
         delay_buffer_r[write_index] = input;
+    }
 
-        // Read with Linear Interpolation (Simplified here as integer)
-        float read_l = write_index - delay_l + buffer_size,
-              read_r = write_index - delay_r + buffer_size;
-        int read_l_floor = read_l, read_r_floor = read_r;
-        float read_l_ceil = read_l - read_l_floor,
-              read_r_ceil = read_r - read_r_floor;
+    void process(float input, float angle_rad, float& out_l, float& out_r, float sample_rate, bool woodworth_delay=true, bool apply_svf=true) {
+        float cos_val = std::cos(angle_rad);
+        float sin_val = std::sin(angle_rad);
 
-        out_l = linear_interpolation(
-            delay_buffer_l[read_l_floor % buffer_size],
-            delay_buffer_l[(read_l_floor + 1) % buffer_size], read_l_ceil);
-        out_r = linear_interpolation(
-            delay_buffer_r[read_r_floor % buffer_size],
-            delay_buffer_r[(read_r_floor + 1) % buffer_size], read_r_ceil);
+        // Get the absolute shortest angle to the median plane (0 is front/back)
+        float azimuth_inc = std::abs(std::atan2(sin_val, std::abs(cos_val))); 
+
+        // Determine hemisphere for Delay assignment
+        bool is_on_right = sin_val > 0;
+
+        // Calculate delay in samples
+        float itd_samples;
+        if (woodworth_delay)
+            itd_samples = _get_woodworth_delay(azimuth_inc, sample_rate);
+        else
+            itd_samples = _get_simple_delay(angle_rad, sample_rate);
+
+        float delay_l = is_on_right ? itd_samples : 0.0f;
+        float delay_r = is_on_right ? 0.0f : itd_samples;
+
+        // Calculate ILD Gains 
+        float gain_l = std::cos(angle_rad * 0.5f + (std::numbers::pi_v<float> * 0.25f));
+        float gain_r = std::sin(angle_rad * 0.5f + (std::numbers::pi_v<float> * 0.25f));
+
+        // Set delay buffers
+        _set_delay_buffers(input);
+
+        // Read samples for left and right
+        out_l = _read_with_interpolation(delay_buffer_l, delay_l);
+        out_r = _read_with_interpolation(delay_buffer_r, delay_r);
+
+        // Apply the svf low pass filter on each side
+        if (apply_svf)
+            _apply_svf(sin_val, cos_val, out_l, out_r);
+        
+        // Multiply with gain
+        out_l *= gain_l;
+        out_r *= gain_r;
 
         write_index = (write_index + 1) % buffer_size;
     }
 };
-
-auto main() -> int {
-    std::string curr_file = __FILE_NAME__;
-    fs::path root_dir = fs::path(__FILE__).parent_path();
-
-    // Define params for i/o paths
-    std::string audio_name = "crawling_scream";
-    std::string audio_file_name = "audio.wav";
-    std::string filter_name = "binaural_rotation";
-
-    // Define filter params
-    float rotation_speed = 0.7f;  // Radians per second
-    float curr_angle = 0.0f;
-    std::string params_str = std::format("{:.2f}", rotation_speed) + "_" +
-                             std::format("{:.2f}", curr_angle);
-
-    // Define i.o paths
-    fs::path audio_in_path = root_dir / "input" / audio_name / audio_file_name;
-    fs::path audio_out_path = root_dir / "output" / filter_name / audio_name /
-                              params_str / audio_file_name;
-
-    // Ensure the directory exists before writing
-    fs::create_directories(audio_out_path.parent_path());
-
-    AudioFileHandler fh;
-
-    // Open input file
-    if (!fh.open_read(audio_in_path.string())) {
-        std::print("[ERROR]: Failed to open file {}\n", audio_in_path.string());
-        return -1;
-    }
-
-    // Open output file
-    if (!fh.open_write(audio_out_path.string())) {
-        std::print("[ERROR]: Failed to open file {}\n",
-                   audio_out_path.string());
-        return -1;
-    }
-
-    std::print("[DEBUG]: Channel count: {}\n", fh.get_channels());
-
-    // Define buffer
-    size_t frame_count = 4096;
-    std::vector<float> buffer(frame_count * fh.get_channels());
-    size_t read_count = 0;
-
-    // Define filters
-    BinauralPanner panner;
-
-    while ((read_count = fh.read_frames(buffer.data(), frame_count)) > 0) {
-        std::print("[DEBUG]: Read: {}\n", read_count);
-
-        for (int i = 0; i < read_count; ++i) {
-            float mono_input =
-                buffer[i * 2];  // Assume mono input for spatialization
-            panner.process(mono_input, curr_angle, buffer[i * 2],
-                           buffer[i * 2 + 1], fh.get_sample_rate());
-
-            curr_angle += (rotation_speed / fh.get_sample_rate());
-            if (curr_angle > 2.0f * std::numbers::pi_v<float>)
-                curr_angle -= 2.0f * std::numbers::pi_v<float>;
-        }
-
-        size_t write_count = fh.write_frames(buffer.data(), read_count);
-        std::print("[DEBUG]: Write: {}\n", write_count);
-    }
-}

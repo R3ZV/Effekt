@@ -7,20 +7,18 @@
 class AudioFileHandler {
    private:
     SNDFILE *file_in, *file_out;
-    SF_INFO sfInfo;
+    SF_INFO sf_info_in, sf_info_out;
 
+public:
    public:
-    AudioFileHandler() : file_in(nullptr), file_out(nullptr) { sfInfo = {0}; }
-    ~AudioFileHandler() {
-        close(true);
-        close(false);
-    }
+    AudioFileHandler() : file_in(nullptr), file_out(nullptr) { sf_info_in = {0}; sf_info_out = {0};}
+    ~AudioFileHandler() { close(true); close(false);}
 
     // opens the file to be read from
     auto open_read(const std::string &path) -> bool;
 
     // opens the file to write to
-    auto open_write(const std::string &path) -> bool;
+    auto open_write(const std::string &path, uint8_t channel_count = 0) -> bool;
 
     // Read a block of samples (Interleaved: L, R, L, R...)
     auto read_frames(float *buffer, sf_count_t frames) -> sf_count_t;
@@ -28,9 +26,9 @@ class AudioFileHandler {
     // Write a block of samples
     auto write_frames(float *buffer, sf_count_t frames) -> sf_count_t;
 
-    auto get_channels() const -> int { return sfInfo.channels; }
-    auto get_sample_rate() const -> int { return sfInfo.samplerate; }
-    auto get_total_frames() const -> sf_count_t { return sfInfo.frames; }
+    int get_channels() const { return sf_info_in.channels; }
+    int get_sample_rate() const { return sf_info_in.samplerate; }
+    sf_count_t get_total_frames() const { return sf_info_in.frames; }
 
     auto close(bool in_file) -> void;
 };
