@@ -26,10 +26,11 @@ set(SOURCE_FILES
     src/svf.cpp
     src/envelope-follower.cpp
     src/audio_handler.cpp
-    # src/cabinet.cpp
-    # src/binaural-panner.cpp
-    # # src/binaural-panner-runner.cpp
-    # src/stereo-to-mono.cpp
+    src/cabinet.cpp
+    src/overdrive.cpp
+    src/binaural-panner.cpp
+    # src/binaural-panner-runner.cpp
+    src/stereo-to-mono.cpp
 )
 
 

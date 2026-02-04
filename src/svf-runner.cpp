@@ -8,17 +8,6 @@
 #include "svf.h"
 #include "envelope-follower.cpp"
 
-/*RELEVANT PARAMS FOR CRYBABY:
-resonance_start
-start_cutoff_sweep
-end_cutoff_sweep
-sweep_speed_hz // One full sweep every 0.66 seconds
-resonance_mult
-*/
-
-// YOU CAN ALSO PLAY WITH THE FUNCTION THAT SETS 'cutoff_sweep', IT CURRENTLY AN
-// EXPONENTIAL
-
 // Makes the sweep triangular
 auto get_tri_sweep(float sweep) -> float {
     return 0.5f * (1.0f - cosf(2.0f * std::numbers::pi_v<float> * sweep));

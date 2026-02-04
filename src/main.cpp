@@ -11,6 +11,7 @@
 #include "audio_handler.h"
 #include "cabinet.h"
 #include "svf.h"
+#include "overdrive.h"
 
 namespace fs = std::filesystem;
 
@@ -103,31 +104,29 @@ auto old_main() -> int {
 }
 
 auto main() -> int {
-    fs::path input_file = "../samples/crawling_scream/audio.wav";
+    fs::path input_file = "../samples/raw-hwth.wav";
     fs::path output_file = "../output/audio.wav";
     fs::create_directories(output_file.parent_path());
 
     AudioFileHandler fh;
 
     if (!fh.open_read(input_file.string())) {
-        std::cerr << "[ERROR]: Failed to open file " << input_file << std::endl;
+        std::cerr << "[ERROR]: Failed to open input" << std::endl;
+        return EXIT_FAILURE;
+    }
+    if (!fh.open_write(output_file.string())) {
+        std::cerr << "[ERROR]: Failed to open output" << std::endl;
         return EXIT_FAILURE;
     }
 
-    if (!fh.open_write(output_file.string())) {
-        std::cerr << "[ERROR]: Failed to open file " << output_file
-                  << std::endl;
-        return EXIT_FAILURE;
-    }
+    float sampleRate = fh.get_sample_rate();
 
     const size_t FRAMES_COUNT = 4096;
     std::vector<AMPFilter*> filters;
-    AMPFilter* cab = new CabinetConvolver("../samples/ir.wav", FRAMES_COUNT);
-    filters.push_back(cab);
-
     int channels = fh.get_channels();
-    std::cout << "[DBG]: Audio file has: " << channels << " channels."
-              << std::endl;
+
+    filters.push_back(new Overdrive(1000.0f, sampleRate, channels));
+    filters.push_back(new CabinetConvolver("../samples/ir.wav", FRAMES_COUNT));
 
     size_t read_count = 0;
     std::vector<float> input_buffer(FRAMES_COUNT * channels);
@@ -137,7 +136,7 @@ auto main() -> int {
 
         std::vector<float> process_buffer(
             input_buffer.begin(),
-            input_buffer.begin() + (read_count * fh.get_channels()));
+            input_buffer.begin() + (read_count * channels));
 
         for (auto filter : filters) {
             process_buffer = filter->apply(process_buffer);
@@ -147,6 +146,8 @@ auto main() -> int {
 
         std::cout << "[DBG]: Wrote: " << write_count << std::endl;
     }
+
+    for (auto f : filters) delete f;
 
     return EXIT_SUCCESS;
 }

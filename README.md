@@ -17,3 +17,4 @@ To run the formatter: `cmake --build build --target format`
 - https://people.montefiore.uliege.be/josmalskyj/files/Gardner1995Efficient.pdf
 - https://www.native-instruments.com/fileadmin/ni_media/downloads/pdf/VAFilterDesign_2.1.0.pdf
 - Spatial Audio by Francis Rumsey
+- https://ccrma.stanford.edu/~dtyeh/papers/yeh10_taslp.pdf
