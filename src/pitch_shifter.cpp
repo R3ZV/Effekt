@@ -1,7 +1,7 @@
 #include "pitch_shifter.h"
 
-#include <filesystem>
 #include <cmath>
+#include <filesystem>
 #include <vector>
 
 PitchShifter::PitchShifter(float pitch_factor, float sample_rate, int channels)
@@ -75,10 +75,10 @@ auto PitchShifter::get_sample(size_t current_pos, float delay, int channel)
     return s1 + frac * (s2 - s1);
 }
 
-
 auto PitchShifter::get_filter_name() -> std::string { return "pitchshifter"; }
 
-auto PitchShifter::get_output_dir(const std::string& audio_name) -> std::string {
+auto PitchShifter::get_output_dir(const std::string& audio_name)
+    -> std::string {
     namespace fs = std::filesystem;
     std::string params_str = "default-params";
 

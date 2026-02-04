@@ -1,8 +1,7 @@
 #pragma once
 
-#include <typeinfo>
-
 #include <string>
+#include <typeinfo>
 #include <vector>
 class AMPFilter {
    public:

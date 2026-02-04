@@ -3,8 +3,8 @@
 class EnvelopeFollower {
    public:
     EnvelopeFollower(float sampleRate);
-    void setParams(float attack_ms, float release_ms);
-    float process(float input);
+    auto set_params(float attack_ms, float release_ms) -> void;
+    auto process(float input) -> float;
 
    private:
     float fs;
