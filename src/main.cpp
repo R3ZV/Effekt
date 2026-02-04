@@ -3,136 +3,77 @@
 #include <cstdlib>
 #include <filesystem>
 #include <format>
-#include <iostream>
+#include <print>
 #include <string>
 #include <vector>
 
 #include "amp_filter.h"
 #include "audio_handler.h"
+#include "binaural-panner.h"
 #include "cabinet.h"
-#include "svf.h"
+#include "crybaby.h"
 #include "overdrive.h"
+#include "svf.h"
 
 namespace fs = std::filesystem;
 
-// TODO: delete after we add SVF as an effect in the effects array
-auto old_main() -> int {
-    std::cout << "[DEBUG]: HELLO FROM MAIN" << std::endl;
+auto main() -> int {
+    std::print("[DEBUG]: HELLO FROM MAIN\n");
+
     // Define root path
-    std::string curr_file = __FILE_NAME__;
-    fs::path root_dir = fs::path(__FILE__).parent_path();
+    fs::path root_dir = fs::path(__FILE__).parent_path().parent_path();
 
     // Define params for i/o paths
-    std::string audio_name = "crawling_scream";
+    std::string audio_name = "raw-7army";
     std::string audio_file_name = "audio.wav";
-    std::string filter_name = "SVF";
-
-    // Define filter params
-    PassFilterTypes filter_type = PassFilterTypes::all_pass_filter;
-    float resonance = 0.99;
-    float start_cutoff_sweep = 0.15;
-    float end_cutoff_sweep = 0.15;
-    float k_knob = 0.5;  // Even if not used for the other filters, keep it
-    std::string params_str =
-        std::format("{:.2f}_{:.2f}_{:.2f}_{:.2f}", resonance, k_knob,
-                    start_cutoff_sweep, end_cutoff_sweep);
 
     // Define i.o paths
-    fs::path audio_in_path = root_dir / "input" / audio_name / audio_file_name;
-    fs::path audio_out_path = root_dir / "output" / filter_name / audio_name /
-                              params_str / to_string(filter_type) /
-                              audio_file_name;
-
-    // Ensure the directory exists before writing
-    fs::create_directories(audio_out_path.parent_path());
+    fs::path audio_in_path =
+        root_dir / "samples" / audio_name / audio_file_name;
 
     AudioFileHandler fh;
+    const uint8_t out_channel_count = 2;
 
     // Open input file
     if (!fh.open_read(audio_in_path.string())) {
-        std::cout << "[ERROR]: Failed to open file " << audio_in_path
-                  << std::endl;
+        std::print("[ERROR]: Failed to open file {}\n", audio_in_path.string());
         return -1;
     }
+
+    int channels = fh.get_channels();
+    float sample_rate = fh.get_sample_rate();
+
+    // Define filter
+    BinauralPanner* binaural_panner = new BinauralPanner(channels, sample_rate);
+    CrybabyEffect* crybaby = new CrybabyEffect(channels, sample_rate);
+
+    // Define output file and create output directory
+    fs::path audio_out_path =
+        root_dir / "output" / "combinations" / audio_name / audio_file_name;
+    fs::create_directories(audio_out_path.parent_path());
 
     // Open output file
-    if (!fh.open_write(audio_out_path.string())) {
-        std::cout << "[ERROR]: Failed to open file " << audio_out_path
-                  << std::endl;
+    if (!fh.open_write(audio_out_path.string(), out_channel_count)) {
+        std::print("[ERROR]: Failed to open file {}\n",
+                   audio_out_path.string());
         return -1;
     }
-
-    std::cout << fh.get_channels() << std::endl;
-
-    // Define buffer
-    size_t frame_count = 4096;
-    std::vector<float> buffer(frame_count * fh.get_channels());
-    size_t read_count = 0;
-
-    // Define filters
-    SVF filter_left, filter_right;
-
-    while ((read_count = fh.read_frames(buffer.data(), frame_count)) > 0) {
-        int numChannels = fh.get_channels();
-
-        float cutoff_sweep = start_cutoff_sweep;
-        float cutoff_sweep_step =
-            (end_cutoff_sweep - start_cutoff_sweep) / read_count;
-        for (int i = 0; i < read_count; ++i) {
-            if (numChannels == 2) {
-                // Sample L is at index i * 2, Sample R is at index i * 2 + 1
-                buffer[i * 2] =
-                    filter_left.process(buffer[i * 2], cutoff_sweep, resonance,
-                                        filter_type, k_knob);
-                buffer[i * 2 + 1] =
-                    filter_right.process(buffer[i * 2 + 1], cutoff_sweep,
-                                         resonance, filter_type, k_knob);
-            } else {
-                buffer[i] = filter_right.process(
-                    buffer[i], cutoff_sweep, resonance, filter_type, k_knob);
-            }
-            cutoff_sweep += cutoff_sweep_step;
-        }
-
-        std::cout << "[DEBUG]: Read: " << read_count << std::endl;
-
-        size_t write_count = fh.write_frames(buffer.data(), read_count);
-
-        std::cout << "[DEBUG]: Write: " << write_count << std::endl;
-    }
-    return 0;
-}
-
-auto main() -> int {
-    fs::path input_file = "../samples/raw-hwth.wav";
-    fs::path output_file = "../output/audio.wav";
-    fs::create_directories(output_file.parent_path());
-
-    AudioFileHandler fh;
-
-    if (!fh.open_read(input_file.string())) {
-        std::cerr << "[ERROR]: Failed to open input" << std::endl;
-        return EXIT_FAILURE;
-    }
-    if (!fh.open_write(output_file.string())) {
-        std::cerr << "[ERROR]: Failed to open output" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    float sampleRate = fh.get_sample_rate();
+    std::print("[DEBUG]: File opened: {}\n", audio_out_path.string());
 
     const size_t FRAMES_COUNT = 4096;
     std::vector<AMPFilter*> filters;
-    int channels = fh.get_channels();
 
-    filters.push_back(new Overdrive(1000.0f, sampleRate, channels));
+    // DONT PLAY CRYBABY AFTER CABINET, IT WILL BE NOISE!
+    filters.push_back(crybaby);
+    filters.push_back(new Overdrive(1000.0f, sample_rate, channels));
     filters.push_back(new CabinetConvolver("../samples/ir.wav", FRAMES_COUNT));
+    filters.push_back(binaural_panner);  // Probably best to leave as the last
 
     size_t read_count = 0;
     std::vector<float> input_buffer(FRAMES_COUNT * channels);
     while ((read_count = fh.read_frames(input_buffer.data(), FRAMES_COUNT)) >
            0) {
-        std::cout << "[DBG]: Read: " << read_count << std::endl;
+        std::print("[DBG]: Read: {}\n", read_count);
 
         std::vector<float> process_buffer(
             input_buffer.begin(),
@@ -144,7 +85,7 @@ auto main() -> int {
 
         size_t write_count = fh.write_frames(process_buffer.data(), read_count);
 
-        std::cout << "[DBG]: Wrote: " << write_count << std::endl;
+        std::print("[DBG]: Wrote: {}\n", write_count);
     }
 
     for (auto f : filters) delete f;
