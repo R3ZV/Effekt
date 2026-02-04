@@ -25,6 +25,7 @@ set(SOURCE_FILES
     src/svf.cpp
     src/audio_handler.cpp
     src/cabinet.cpp
+    src/overdrive.cpp
     src/binaural-panner.cpp
     # src/binaural-panner-runner.cpp
     src/stereo-to-mono.cpp
