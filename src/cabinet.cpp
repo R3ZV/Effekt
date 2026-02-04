@@ -1,12 +1,10 @@
 #include "cabinet.h"
 
 #include <algorithm>
-#include <iostream>
 #include <stdexcept>
 
 #include "audio_handler.h"
 #include "fft.h"
-#include "sndfile.h"
 
 CabinetConvolver::CabinetConvolver(const std::string& ir_path, int block_size)
     : block_size(block_size) {
@@ -16,94 +14,138 @@ CabinetConvolver::CabinetConvolver(const std::string& ir_path, int block_size)
                                  ir_path);
     }
 
-    sf_count_t total_frames = ir_handler.get_total_frames();
-    int channels = ir_handler.get_channels();
-    std::vector<float> buffer(total_frames * channels);
+    int num_channels = ir_handler.get_channels();
+    const int READ_CHUNK_SIZE = 4096;
 
-    sf_count_t frames_read =
-        ir_handler.read_frames(buffer.data(), total_frames);
-    if (frames_read < total_frames) {
-        std::cout << "[WARNING] File shorter than expected. Read: "
-                  << frames_read << " frames." << std::endl;
-        total_frames = frames_read;
+    std::vector<float> read_buffer(READ_CHUNK_SIZE * num_channels);
+    std::vector<float> ir_raw_interleaved;
+
+    size_t frames_read = 0;
+    while ((frames_read = ir_handler.read_frames(read_buffer.data(),
+                                                 READ_CHUNK_SIZE)) > 0) {
+        ir_raw_interleaved.insert(
+            ir_raw_interleaved.end(), read_buffer.begin(),
+            read_buffer.begin() + (frames_read * num_channels));
     }
 
-    std::vector<float> ir_mono;
-    ir_mono.reserve(total_frames);
-    if (channels > 1) {
-        for (sf_count_t i = 0; i < total_frames; ++i) {
-            ir_mono.push_back(buffer[i * channels]);
+    size_t num_frames = ir_raw_interleaved.size() / num_channels;
+
+    size_t required_size = block_size + num_frames - 1;
+    this->fft_size = 1;
+    while (this->fft_size < required_size) this->fft_size *= 2;
+
+    std::vector<Complex> ir_padded_L(this->fft_size, {0, 0});
+    std::vector<Complex> ir_padded_R(this->fft_size, {0, 0});
+
+    for (size_t i = 0; i < num_frames; ++i) {
+        if (num_channels == 1) {
+            ir_padded_L[i] = ir_raw_interleaved[i];
+            ir_padded_R[i] = ir_raw_interleaved[i];
+        } else if (num_channels >= 2) {
+            ir_padded_L[i] = ir_raw_interleaved[i * num_channels + 0];
+            ir_padded_R[i] = ir_raw_interleaved[i * num_channels + 1];
         }
-    } else {
-        ir_mono = std::move(buffer);
     }
 
-    init_partitions(ir_mono);
+    int fade_len = std::min((int)num_frames, 256);
+    for (int k = 0; k < fade_len; ++k) {
+        float gain = 1.0f - ((float)k / (float)fade_len);
 
-    std::cout << "[INFO]: Cabinet Loaded. Size: " << ir_mono.size()
-              << " samples. Partitions: " << ir_partitions_freq.size()
-              << std::endl;
-}
+        size_t idx = num_frames - 1 - k;
 
-auto CabinetConvolver::init_partitions(const std::vector<float>& ir) -> void {
-    fft_size = block_size * 2;
+        ir_padded_L[idx] *= gain;
+        ir_padded_R[idx] *= gain;
+    }
 
-    size_t num_partitions = (ir.size() + block_size - 1) / block_size;
-    ir_partitions_freq.resize(num_partitions);
+    float max_peak = 0.0f;
+    for (size_t i = 0; i < num_frames; ++i) {
+        max_peak = std::max(max_peak, std::abs(ir_padded_L[i].real()));
+        max_peak = std::max(max_peak, std::abs(ir_padded_R[i].real()));
+    }
 
-    for (size_t p = 0; p < num_partitions; ++p) {
-        std::vector<Complex> padded_chunk(fft_size, {0.0f, 0.0f});
+    if (max_peak > 0.00001f) {
+        float scale_factor = 0.5f / max_peak;
 
-        size_t start_idx = p * block_size;
-        size_t end_idx = std::min(start_idx + block_size, ir.size());
-
-        for (size_t i = start_idx; i < end_idx; ++i) {
-            padded_chunk[i - start_idx] = {ir[i], 0.0f};
+        for (size_t i = 0; i < num_frames; ++i) {
+            ir_padded_L[i] *= scale_factor;
+            ir_padded_R[i] *= scale_factor;
         }
-
-        ir_partitions_freq[p] = FFT::compute(padded_chunk, FFT_DIR::forward);
     }
 
-    overlap_buffer.assign(block_size, 0.0f);
-    fdl.resize(num_partitions, std::vector<Complex>(fft_size, {0.0f, 0.0f}));
+    this->ir_fft_l = FFT::compute(ir_padded_L, FFT_DIR::forward);
+    this->ir_fft_r = FFT::compute(ir_padded_R, FFT_DIR::forward);
+
+    this->tail_l.assign(this->fft_size, 0.0f);
+    this->tail_r.assign(this->fft_size, 0.0f);
 }
 
 auto CabinetConvolver::apply(const std::vector<float>& input)
     -> std::vector<float> {
-    if (input.empty()) return input;
-
-    std::vector<Complex> padded_input(fft_size, {0.0f, 0.0f});
-    size_t n_copy = std::min((size_t)block_size, input.size());
-    for (size_t i = 0; i < n_copy; ++i) {
-        padded_input[i] = {input[i], 0.0f};
+    if (input.size() > this->block_size * 2) {
+        throw std::runtime_error("Input chunk too large.");
     }
 
-    std::vector<Complex> current_input_fft =
-        FFT::compute(padded_input, FFT_DIR::forward);
+    size_t num_frames = input.size() / 2;
 
-    fdl.push_front(current_input_fft);
-    fdl.pop_back();
+    std::vector<Complex> input_L(this->fft_size, {0, 0});
+    std::vector<Complex> input_R(this->fft_size, {0, 0});
 
-    std::vector<Complex> fft_accumulator(fft_size, {0.0f, 0.0f});
+    for (size_t i = 0; i < num_frames; ++i) {
+        input_L[i] = {input[2 * i], 0.0f};
+        input_R[i] = {input[2 * i + 1], 0.0f};
+    }
 
-    for (size_t p = 0; p < ir_partitions_freq.size(); ++p) {
-        for (int k = 0; k < fft_size; ++k) {
-            fft_accumulator[k] += fdl[p][k] * ir_partitions_freq[p][k];
+    std::vector<Complex> fft_in_L = FFT::compute(input_L, FFT_DIR::forward);
+    std::vector<Complex> fft_in_R = FFT::compute(input_R, FFT_DIR::forward);
+
+    auto process_channel =
+        [&](const std::vector<Complex>& signal_fft,
+            const std::vector<Complex>& ir_fft,
+            std::vector<float>& tail_buffer) -> std::vector<float> {
+        std::vector<Complex> spectrum(this->fft_size);
+        for (size_t k = 0; k < this->fft_size; ++k) {
+            spectrum[k] = signal_fft[k] * ir_fft[k];
         }
+
+        std::vector<Complex> time_domain =
+            FFT::compute(spectrum, FFT_DIR::backward);
+
+        std::vector<float> output_channel;
+        output_channel.reserve(num_frames);
+
+        for (size_t k = 0; k < num_frames; ++k) {
+            float sample = time_domain[k].real() / (float)this->fft_size;
+            sample += tail_buffer[k];
+            output_channel.push_back(sample);
+        }
+
+        size_t remaining_tail = this->fft_size - num_frames;
+        for (size_t k = 0; k < remaining_tail; ++k) {
+            tail_buffer[k] = tail_buffer[k + num_frames];
+        }
+        std::fill(tail_buffer.begin() + remaining_tail, tail_buffer.end(),
+                  0.0f);
+
+        for (size_t k = num_frames; k < this->fft_size; ++k) {
+            float val = time_domain[k].real() / (float)this->fft_size;
+            tail_buffer[k - num_frames] += val;  // Accumulate!
+        }
+
+        return output_channel;
+    };
+
+    std::vector<float> out_L =
+        process_channel(fft_in_L, this->ir_fft_l, this->tail_l);
+    std::vector<float> out_R =
+        process_channel(fft_in_R, this->ir_fft_r, this->tail_r);
+
+    std::vector<float> stereo_output;
+    stereo_output.reserve(input.size());
+
+    for (size_t i = 0; i < num_frames; ++i) {
+        stereo_output.push_back(out_L[i]);
+        stereo_output.push_back(out_R[i]);
     }
 
-    auto time_domain_complex = FFT::compute(fft_accumulator, FFT_DIR::backward);
-
-    std::vector<float> output(block_size);
-    float normalizer = 1.0f / fft_size;
-
-    for (int i = 0; i < block_size; ++i) {
-        output[i] =
-            (time_domain_complex[i].real() * normalizer) + overlap_buffer[i];
-
-        overlap_buffer[i] =
-            time_domain_complex[i + block_size].real() * normalizer;
-    }
-
-    return output;
+    return stereo_output;
 }
