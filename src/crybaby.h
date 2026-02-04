@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "amp_filter.h"
-#include "envelope-follower.h"
+#include "envelope_follower.h"
 #include "svf.h"
 
 class CrybabyEffect : public AMPFilter {

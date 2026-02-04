@@ -1,4 +1,4 @@
-#include "binaural-panner.h"
+#include "binaural_panner.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,7 +17,8 @@ BinauralPanner::BinauralPanner(uint8_t ch_count, uint32_t sample_rate,
       apply_svf(apply_svf),
       rotation_speed(rotation_speed) {}
 
-float BinauralPanner::_get_simple_delay(float angle_rad, uint32_t sample_rate) {
+auto BinauralPanner::_get_simple_delay(float angle_rad, uint32_t sample_rate)
+    -> float {
     // Calculate ITD based on the sine of the angle
     float max_delay_samples = 0.00065f * sample_rate;
     float itd_offset = std::sin(angle_rad) * max_delay_samples;
@@ -25,8 +26,8 @@ float BinauralPanner::_get_simple_delay(float angle_rad, uint32_t sample_rate) {
     return itd_offset;
 }
 
-float BinauralPanner::_get_woodworth_delay(float relative_angle_rad,
-                                           uint32_t sample_rate) {
+auto BinauralPanner::_get_woodworth_delay(float relative_angle_rad,
+                                          uint32_t sample_rate) -> float {
     const float c = 340.0f;   // Speed of sound
     const float r = 0.0875f;  // Average head radius
 
@@ -38,7 +39,8 @@ float BinauralPanner::_get_woodworth_delay(float relative_angle_rad,
 }
 
 // Calculates the delayed "write_index" element using interpolation
-float BinauralPanner::_read_with_interpolation(float* buf, float delay) {
+auto BinauralPanner::_read_with_interpolation(float* buf, float delay)
+    -> float {
     float read_pos = (float)write_index - delay;
     float wrapped = std::fmod(read_pos, (float)buffer_size);
 
@@ -49,9 +51,9 @@ float BinauralPanner::_read_with_interpolation(float* buf, float delay) {
     return std::lerp(buf[i1], buf[i2], wrapped - i1);
 }
 
-void BinauralPanner::_apply_svf(float sin_val, float cos_val,
-                                float& in_out_sample_l,
-                                float& in_out_sample_r) {
+auto BinauralPanner::_apply_svf(float sin_val, float cos_val,
+                                float& in_out_sample_l, float& in_out_sample_r)
+    -> void {
     // Calculate a Front-Back factor (0.0 = front, 1.0 = back)
     float back_factor = std::clamp((1.0f - cos_val) * 0.5f, 0.0f, 1.0f);
 
@@ -80,14 +82,14 @@ void BinauralPanner::_apply_svf(float sin_val, float cos_val,
                                     PassFilterTypes::low_pass);
 }
 
-void BinauralPanner::_set_delay_buffers(float input) {
+auto BinauralPanner::_set_delay_buffers(float input) -> void {
     delay_buffer_l[write_index] = input;
     delay_buffer_r[write_index] = input;
 }
 
-void BinauralPanner::_process(float input, float angle_rad, float& out_l,
+auto BinauralPanner::_process(float input, float angle_rad, float& out_l,
                               float& out_r, float sample_rate,
-                              bool woodworth_delay, bool apply_svf) {
+                              bool woodworth_delay, bool apply_svf) -> void {
     float cos_val = std::cos(angle_rad);
     float sin_val = std::sin(angle_rad);
 

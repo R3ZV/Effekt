@@ -1,5 +1,6 @@
 #include "cabinet.h"
 
+#include <filesystem>
 #include <algorithm>
 #include <stdexcept>
 
@@ -148,4 +149,15 @@ auto CabinetConvolver::apply(const std::vector<float>& input)
     }
 
     return stereo_output;
+}
+
+auto CabinetConvolver::get_filter_name() -> std::string { return "pitchshifter"; }
+
+auto CabinetConvolver::get_output_dir(const std::string& audio_name) -> std::string {
+    namespace fs = std::filesystem;
+    std::string params_str = "default-params";
+
+    fs::path audio_out_path =
+        fs::path(get_filter_name()) / audio_name / params_str;
+    return audio_out_path.string();
 }

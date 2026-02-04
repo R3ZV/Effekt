@@ -395,4 +395,85 @@ Here is the spectogram for the envelope follower crybaby:
     \label{fig:crybaby_ev_fol_raw-7army}
 \end{figure}
 
+\section{Cabinet Simulation via Convolution}
+
+\subsection{Concept}
+To implement a realistic guitar cabinet simulation in software, we utilize \textbf{Convolution}.
+This way we can apply the acoustic characteristics of a physical speaker cabinet
+to a raw digital audio signal.
+
+The core component of this simulation is the \textbf{Impulse Response (IR)}.
+An IR is an audio recording that captures how in this case a guitar cabinet
+reacts to instantaneous burst of energy.
+
+When we convolve a dry guitar signal with this IR, we are essentially triggering
+that recorded response for every single sample of the input guitar.
+
+This filters the frequency content—removing the harsh, fizzy high frequencies
+typical of direct-recorded distortion—and introduces the natural resonance and
+short reverberations of the wooden cabinet structure.
+
+\subsection{Source Material}
+For this specific implementation, the impulse response captures a classic rock configuration:
+\begin{itemize}
+    \item \textbf{Cabinet:} Marshall 1960
+    \item \textbf{Speakers:} Celestion G12M-25 "Greenbacks"
+    \item \textbf{Microphone:} Shure SM57
+    \item \textbf{Position:} Cap Edge, 0.5 inches distance
+\end{itemize}
+\section{Overdrive Effect (Diode Clipper)}
+
+\subsection{Concept}
+Overdrive creates distortion by "clipping" the peaks of an audio signal.
+In the analog world, this is often achieved using diodes.
+A diode allows current to flow easily in one direction but restricts it in the other,
+and most importantly, it has a non-linear relationship between voltage and current.
+
+When the signal volume is low, the diode acts like an open circuit, and the audio
+passes unchanged. As the volume increases, the diode begins to conduct, "squashing" the amplitude.
+This squares off the tops of the waveforms, resuling in signals that 
+we perceive as "distortion."
+
+\subsection{Implementation: Wave Digital Filters (WDF)}
+Instead of processing simple voltages, this implementation uses \textbf{Wave Digital Filters}.
+WDFs model circuits using wave variables (incident and reflected waves)
+rather than Kirchhoff variables (voltage and current).
+
+The relationship between physical variables ($v, i$) and wave variables ($a, b$)
+at a port with port resistance $R$ is defined as:
+\begin{align*}
+    a &= v + R \cdot i \quad \text{(Incident Wave)} \\
+    b &= v - R \cdot i \quad \text{(Reflected Wave)}
+\end{align*}
+
+This approach decouples the non-linear element (the diode) from the rest of
+the circuit, allowing us to solve the non-linear equation locally without
+affecting the stability of the entire system.
+
+\subsection{The Physics: Shockley Diode Equation}
+
+The behavior of the diode is governed by the \textbf{Shockley Diode Equation}:
+$$ I_d = I_s (e^{V_d / V_t} - 1) $$
+Where:
+\begin{itemize}
+    \item $I_d$: Diode current.
+    \item $V_d$: Voltage across the diode.
+    \item $I_s$: \textbf{Saturation Current}. The code uses $1\times10^{-9}$ (1nA) for
+        positive voltage and $5\times10^{-8}$ (50nA) for negative.
+        This asymmetry creates \textbf{Asymmetric Clipping}, which produces even-order harmonics,
+        often associated with smoother, "tube-like" distortion.
+    \item $V_t$: \textbf{Thermal Voltage}. Approximately $25.85\text{mV}$ at room temperature ($300\text{K}$).
+\end{itemize}
+
+\subsection{The Solver: Newton-Raphson Method}
+Because the Shockley equation is implicit (current depends on voltage, but voltage depends on current in the circuit), we cannot solve it algebraically. We must find a value for $v$ that satisfies the WDF constraints.
+
+We rearrange the WDF incident wave equation $a = v + R \cdot i(v)$ into a function $f(v)$ that equals zero:
+$$ f(v) = v + R \cdot I_s (e^{v / V_t} - 1) - a_{in} = 0 $$
+
+We solve for $v$ using the \textbf{Newton-Raphson method}, an iterative algorithm that approximates the root of a function:
+$$ v_{n+1} = v_n - \frac{f(v_n)}{f'(v_n)} $$
+
+Once $v$ is found, the reflected wave $b$ is calculated via $b = 2v - a$, which is returned to the circuit loop.
+
 \end{document}

@@ -21,15 +21,18 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(libsndfile)
 
 set(SOURCE_FILES
-    src/crybaby.cpp
     src/main.cpp
-    src/svf.cpp
-    src/envelope-follower.cpp
     src/audio_handler.cpp
+
+    src/svf.cpp
+    src/crybaby.cpp
+    src/envelope_follower.cpp
+    src/binaural_panner.cpp
+    src/stereo_to_mono.cpp
+
     src/cabinet.cpp
     src/overdrive.cpp
-    src/binaural-panner.cpp
-    src/stereo-to-mono.cpp
+    src/pitch_shifter.cpp
 )
 
 
