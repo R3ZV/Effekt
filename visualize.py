@@ -40,7 +40,7 @@ output_path = curr_path / "output"
 input_path = curr_path / "input"
 
 # Filter
-filter = "binaural_rotation"
+filter = "moog_ladder"
 # resonance = 0.85
 # start_cutoff_sweep = 450
 # end_cutoff_sweep = 2200
@@ -61,7 +61,7 @@ audio_in_dir = input_path / audio_name
 audio_in_file_path = audio_in_dir / audio_file_name
 
 # Load the file
-sample_rate, samples = wavfile.read(audio_out_file_path)
+sample_rate, samples = wavfile.read("output/envelope_follower/audio.wav")
 
 # Check if the file is integer-based (standard for WAV) and normalize to -1.0 to 1.0
 if samples.dtype == np.int16:
@@ -72,7 +72,7 @@ if len(samples.shape) > 1:
     sample_count, ch_count = samples.shape
     for i in range(ch_count):
         draw_spectogram(
-            samples[:, i], sample_rate, f"{audio_name}_spect_ch_{i}", str(audio_out_dir)
+            samples[:, i], sample_rate, f"{audio_name}_spect_ch_{i}", str("output/envelope_follower/")
         )
 else:
-    draw_spectogram(samples, sample_rate, f"{audio_name}_mono", str(audio_out_dir))
+    draw_spectogram(samples, sample_rate, f"{audio_name}_mono", str("output/envelope_follower/"))

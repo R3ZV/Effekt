@@ -6,6 +6,7 @@
 
 #include "audio_handler.h"
 #include "svf.h"
+#include "envelope-follower.cpp"
 
 /*RELEVANT PARAMS FOR CRYBABY:
 resonance_start
@@ -41,16 +42,15 @@ namespace fs = std::filesystem;
 auto main() -> int {
     std::print("[DEBUG]: HELLO FROM MAIN\n");
     // Define root path
-    std::string curr_file = __FILE_NAME__;
-    fs::path root_dir = fs::path(__FILE__).parent_path();
+    fs::path root_dir = fs::path(__FILE__).parent_path().parent_path();
 
     // Define params for i/o paths
-    std::string audio_name = "crawling_scream";
+    std::string audio_name = "calm_guitar";
     std::string audio_file_name = "audio.wav";
     std::string filter_name = "SVF";
 
     // Define input path
-    fs::path audio_in_path = root_dir / "input" / audio_name / audio_file_name;
+    fs::path audio_in_path = root_dir / "samples" / audio_name / audio_file_name;
 
     AudioFileHandler fh;
 
@@ -72,7 +72,7 @@ auto main() -> int {
     PassFilterTypes filter_type = PassFilterTypes::band_pass;
     float resonance_start = 0.85;
     float start_cutoff_sweep = 450.0;
-    float end_cutoff_sweep = 2200.0;
+    float end_cutoff_sweep = 2250.0;
     float k_knob = 0.5;  // Even if not used for the other filters, keep it
     std::string params_str = std::format("{:.2f}", resonance_start) + "_" +
                              std::format("{:.2f}", k_knob) + "_" +
@@ -99,6 +99,7 @@ auto main() -> int {
 
     // Define filters
     SVF filter_left, filter_right;
+    EnvelopeFollower env_fol_l(sample_rate), env_fol_r(sample_rate);
 
     // Define sweep
     float sweep = 0.0f;
@@ -119,20 +120,23 @@ auto main() -> int {
             // Sweep cutoff and resonance
             float cutoff_sweep = get_cutoff_sweep_exp(
                 start_cutoff_sweep, end_cutoff_sweep, sample_rate, tri_sweep);
-            float resonance_sweep =
+            float resonance_sweep = 
                 get_resonance_sweep(resonance_start, resonance_mult, tri_sweep);
 
             if (channel_count == 2) {
+                float cutoff_sweep_env_fol_l = env_fol_l.process(buffer[2 * i]);
+                float cutoff_sweep_env_fol_r = env_fol_l.process(buffer[2 * i + 1]);
                 // Sample L is at index i * 2, Sample R is at index i * 2 + 1
                 buffer[i * 2] =
-                    filter_left.process(buffer[i * 2], cutoff_sweep,
+                    filter_left.process(buffer[i * 2], cutoff_sweep_env_fol_l,
                                         resonance_sweep, filter_type, k_knob);
                 buffer[i * 2 + 1] =
-                    filter_right.process(buffer[i * 2 + 1], cutoff_sweep,
+                    filter_right.process(buffer[i * 2 + 1], cutoff_sweep_env_fol_r,
                                          resonance_sweep, filter_type, k_knob);
             } else {
+                float cutoff_sweep_env_fol_r = env_fol_r.process(buffer[i]);
                 buffer[i] =
-                    filter_right.process(buffer[i], cutoff_sweep,
+                    filter_right.process(buffer[i], cutoff_sweep_env_fol_r,
                                          resonance_sweep, filter_type, k_knob);
             }
         }

@@ -21,14 +21,18 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(libsndfile)
 
 set(SOURCE_FILES
-    src/main.cpp
+    src/svf-runner.cpp
+    # src/main.cpp
     src/svf.cpp
+    src/envelope-follower.cpp
     src/audio_handler.cpp
-    src/cabinet.cpp
-    src/binaural-panner.cpp
-    # src/binaural-panner-runner.cpp
-    src/stereo-to-mono.cpp
+    # src/cabinet.cpp
+    # src/binaural-panner.cpp
+    # # src/binaural-panner-runner.cpp
+    # src/stereo-to-mono.cpp
 )
+
+
 add_executable(AudioProcessor ${SOURCE_FILES})
 
 target_link_libraries(AudioProcessor PRIVATE sndfile ${FFTW3_LIBRARIES})
