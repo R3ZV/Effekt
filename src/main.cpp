@@ -103,7 +103,7 @@ auto old_main() -> int {
 }
 
 auto main() -> int {
-    fs::path input_file = "../samples/calm_guitar/audio.wav";
+    fs::path input_file = "../samples/crawling_scream/audio.wav";
     fs::path output_file = "../output/audio.wav";
     fs::create_directories(output_file.parent_path());
 

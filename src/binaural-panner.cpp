@@ -20,24 +20,15 @@ namespace fs = std::filesystem;
 - Binaural stuff
 */
 
-auto linear_interpolation(float sample1, float sample2, float sample1_dist)
-    -> float {
-    return sample1 * (1 - sample1_dist) + sample2 * sample1_dist;
-}
-
 // BIG BOOK: Spatial Audio by Francis Rumsey
-// Sections: 1.4, 3, 4.7
 class BinauralPanner {
-   private:
+private:
     static const int buffer_size = 4410;  // 100ms at 44.1kHz
     float delay_buffer_l[buffer_size] = {}, delay_buffer_r[buffer_size] = {};
     int write_index = 0;
     SVF svf_l, svf_r;
 public:
     BinauralPanner(){}
-
-   public:
-    BinauralPanner() {}
 
     float _get_simple_delay(float angle_rad, uint32_t sample_rate){
         // Calculate ITD based on the sine of the angle
@@ -68,7 +59,7 @@ public:
         
         int i1 = (int)std::floor(wrapped);
         int i2 = (i1 + 1) % buffer_size;
-        return linear_interpolation(buf[i1], buf[i2], wrapped - i1);
+        return std::lerp(buf[i1], buf[i2], wrapped - i1);
     }
 
     void _apply_svf(float sin_val, float cos_val, float& in_out_sample_l, float& in_out_sample_r) {

@@ -1,10 +1,11 @@
-#include "BinauralPanner.cpp"
+#include "binaural-panner.cpp"
+#include "stereo-to-mono.cpp"
 
 int main(){
     std::print("[DEBUG]: HELLO FROM MAIN\n");
     // Define root path
     std::string curr_file = __FILE_NAME__;
-    fs::path root_dir = fs::path(__FILE__).parent_path();
+    fs::path root_dir = fs::path(__FILE__).parent_path().parent_path();
 
     // Define params for i/o paths
     std::string audio_name = "crawling_scream";
@@ -21,7 +22,7 @@ int main(){
                              "_" + std::format("{:.2f}", (float)apply_svf);
 
     // Define i.o paths
-    fs::path audio_in_path = root_dir / "input" / audio_name / audio_file_name;
+    fs::path audio_in_path = root_dir / "samples" / audio_name / audio_file_name;
     fs::path audio_out_path = root_dir / "output" / filter_name / audio_name / params_str / audio_file_name;
 
     // Ensure the directory exists before writing

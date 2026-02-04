@@ -25,11 +25,18 @@ set(SOURCE_FILES
     src/svf.cpp
     src/audio_handler.cpp
     src/cabinet.cpp
+    src/binaural-panner.cpp
+    # src/binaural-panner-runner.cpp
+    src/stereo-to-mono.cpp
 )
-
 add_executable(AudioProcessor ${SOURCE_FILES})
 
 target_link_libraries(AudioProcessor PRIVATE sndfile ${FFTW3_LIBRARIES})
+
+# Extra linkage for std::print
+if (WIN32)
+    target_link_libraries(AudioProcessor PRIVATE -lstdc++exp)
+endif()
 
 target_include_directories(AudioProcessor SYSTEM PRIVATE 
     ${libsndfile_SOURCE_DIR}/include

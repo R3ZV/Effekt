@@ -2,7 +2,7 @@
 
 #include <sndfile.h>
 
-#include <iostream>
+#include <print>
 
 auto AudioFileHandler::open_read(const std::string &path) -> bool {
     file_in = sf_open(path.c_str(), SFM_READ, &sf_info_in);
@@ -13,8 +13,7 @@ auto AudioFileHandler::open_read(const std::string &path) -> bool {
         return true;
 }
 
-auto AudioFileHandler::open_write(const std::string& path, uint8_t channel_count = 0)
-    -> bool {
+auto AudioFileHandler::open_write(const std::string& path, uint8_t channel_count) -> bool {
         this->sf_info_out = sf_info_in;
         if (channel_count > 0)
             sf_info_out.channels = channel_count;
