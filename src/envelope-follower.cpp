@@ -13,6 +13,9 @@
 
 namespace fs = std::filesystem;
 
+// Reference implementation: https://www.musicdsp.org/en/latest/Analysis/97-envelope-detector.html
+// https://www.uncini.com/dida/tsa/mod_tsa/Chap_08.pdf
+// 8.7.2: Dynamic Gain Control, 8.7.3: Signal level calculation
 class EnvelopeFollower {
 private:
     float fs;
@@ -22,7 +25,7 @@ private:
 public:
     EnvelopeFollower(float sampleRate) : fs(sampleRate) {
         envelope = 0.0f;
-        setParams(10.0f, 100.0f); // Default: 10ms attack, 100ms release
+        setParams(10.0f, 100.0f);
     }
 
     // attack_ms:  How fast to track a volume spike
@@ -58,11 +61,5 @@ public:
         }
 
         return envelope;
-    }
-
-    // Optional: Get value in Decibels (useful for compressors/meters)
-    float getEnvelopeDB() {
-        if (envelope <= 0.000001f) return -120.0f; // Silence floor
-        return 20.0f * std::log10(envelope);
     }
 };

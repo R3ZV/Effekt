@@ -31,6 +31,13 @@ auto get_cutoff_sweep_exp(float start_cutoff, float end_cutoff,
     return (start_cutoff * pow(end_cutoff / start_cutoff, sweep)) / sample_rate;
 }
 
+auto get_cutoff_sweep_env_fol(EnvelopeFollower& env_fol, float input) -> float{
+    // Get envelope follower output
+    float env = env_fol.process(input);
+
+    return env;
+}
+
 // Returns the resonance sweep capped at 0.99
 auto get_resonance_sweep(float resonance_start, float resonance_mult,
                          float sweep) -> float {
@@ -45,7 +52,7 @@ auto main() -> int {
     fs::path root_dir = fs::path(__FILE__).parent_path().parent_path();
 
     // Define params for i/o paths
-    std::string audio_name = "calm_guitar";
+    std::string audio_name = "raw-7army";
     std::string audio_file_name = "audio.wav";
     std::string filter_name = "SVF";
 
@@ -72,7 +79,7 @@ auto main() -> int {
     PassFilterTypes filter_type = PassFilterTypes::band_pass;
     float resonance_start = 0.85;
     float start_cutoff_sweep = 450.0;
-    float end_cutoff_sweep = 2250.0;
+    float end_cutoff_sweep = 2500.0;
     float k_knob = 0.5;  // Even if not used for the other filters, keep it
     std::string params_str = std::format("{:.2f}", resonance_start) + "_" +
                              std::format("{:.2f}", k_knob) + "_" +
@@ -124,20 +131,24 @@ auto main() -> int {
                 get_resonance_sweep(resonance_start, resonance_mult, tri_sweep);
 
             if (channel_count == 2) {
-                float cutoff_sweep_env_fol_l = env_fol_l.process(buffer[2 * i]);
-                float cutoff_sweep_env_fol_r = env_fol_l.process(buffer[2 * i + 1]);
+                float cutoff_sweep_env_fol_l = get_cutoff_sweep_env_fol(env_fol_l, buffer[2 * i]);
+                float cutoff_sweep_env_fol_r = get_cutoff_sweep_env_fol(env_fol_r, buffer[2 * i + 1]);
+                
                 // Sample L is at index i * 2, Sample R is at index i * 2 + 1
                 buffer[i * 2] =
                     filter_left.process(buffer[i * 2], cutoff_sweep_env_fol_l,
                                         resonance_sweep, filter_type, k_knob);
+                        
                 buffer[i * 2 + 1] =
                     filter_right.process(buffer[i * 2 + 1], cutoff_sweep_env_fol_r,
                                          resonance_sweep, filter_type, k_knob);
             } else {
-                float cutoff_sweep_env_fol_r = env_fol_r.process(buffer[i]);
+                float input_cp = buffer[i];
+                float cutoff_sweep_env_fol_r = get_cutoff_sweep_env_fol(env_fol_r, input_cp);
                 buffer[i] =
-                    filter_right.process(buffer[i], cutoff_sweep_env_fol_r,
+                    filter_right.process(input_cp, cutoff_sweep_env_fol_r,
                                          resonance_sweep, filter_type, k_knob);
+                buffer[i] = std::lerp(input_cp, buffer[i], 0.8);
             }
         }
 
