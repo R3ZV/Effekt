@@ -5,3 +5,5 @@ build/
 draft.cpp
 CmakeFiles/
 output/
+# Ignoring for the moment cause it's boring
+src/moog-ladder.cpp

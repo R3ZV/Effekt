@@ -247,7 +247,7 @@ The cutoff "sweeped" from normal to shadow and from shadow to rear based on the 
 
 \subsection{Results}
 
-Applying this on the same input as the SVF' here are the spectograms for the binaural rotation:
+Applying this on the same input as the SVF here are the spectograms for the binaural rotation:
 
 \begin{figure}[H]
     \centering
@@ -277,5 +277,122 @@ Applying this on the same input as the SVF' here are the spectograms for the bin
     \label{fig:svf_crawling_ch_1}
 \end{figure}
 
-Most notable are the difference in phase between the channels and that for the version that uses low pass filtering we see the frequencies steadily decrease and increase. 
+Most notable are the difference in phase between the channels and that for the version that uses low pass filtering we see the frequencies steadily decrease and increase.
+
+
+\section{Envelope Follower / Peak Detector}
+
+While not a filter in the spectral sense, the Envelope Follower is a circuit that automatically detects and traces the contour (peaks) of the audio signal. This component is essential for dynamic effects, such as the automatic wah (crybaby) effect, where the filter cutoff frequency needs to respond to the playing intensity.
+
+The behavior of the envelope follower is divided into two distinct phases, \textbf{Attack} and \textbf{Release}. In both phases, the envelope moves towards the instantaneous amplitude of the input signal, but usually at significantly different speeds:
+
+\begin{itemize}
+    \item \textbf{Attack Phase:} Occurs when the absolute value of the input $|x[n]|$ is \textit{greater} than the current envelope $e[n-1]$. The envelope rises quickly to catch the transient.
+    \item \textbf{Release Phase:} Occurs when the input drops \textit{below} the current envelope. The envelope decays slowly, smoothing out the signal to prevent "zipper noise" or distortion.
+\end{itemize}
+
+In digital implementation, these speeds are defined by a time constant $\tau$ (measured in seconds), which represents the time it takes for the value to reach approximately $63.2\%$ of the target step. To simulate the physics of a real capacitor charging and discharging in an analog RC circuit, this time constant is converted into a filter coefficient using an exponential function dependent on the sampling rate $f_s$:
+
+\begin{equation}
+    \alpha = e^{- \frac{1}{\tau \cdot f_s}}
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $\alpha$ is the resulting Attack or Release coefficient (between 0 and 1).
+    \item $\tau$ is the desired time constant in seconds.
+    \item $f_s$ is the sampling rate in Hz.
+\end{itemize}
+
+This coefficient $\alpha$ is then used to perform a "leaky integration" (a weighted average), which linearly interpolates between the previous envelope state and the current input. The logic branches based on the signal direction:
+
+\begin{equation}
+    e[n] = 
+    \begin{cases} 
+        \alpha_{att} \cdot e[n-1] + (1 - \alpha_{att}) \cdot |x[n]| & \text{if } |x[n]| > e[n-1] \quad \text{(Attack)} \\
+        \alpha_{rel} \cdot e[n-1] + (1 - \alpha_{rel}) \cdot |x[n]| & \text{if } |x[n]| \le e[n-1] \quad \text{(Release)}
+    \end{cases}
+\end{equation}
+
+Where $e[n]$ is the current envelope value and $|x[n]|$ is the rectified (absolute) input signal.
+\section{Crybaby Effect (Wah-Wah)}
+
+The Crybaby effect is digitally implemented by applying a band-pass filter to the signal while simultaneously sweeping the cutoff frequency and resonance (Q-factor). The control mechanism creates the characteristic vocal-like sound.
+
+The control signal, often represented as a "knob" value between 0 and 1, is typically mapped to a \textbf{triangular sweep}. This is done to simulate the physical motion of a real Wah pedal: as the player rocks the pedal back and forth, the value rises linearly to the maximum and falls linearly back to the minimum, creating a smooth, continuous modulation rather than an abrupt jump.
+
+\subsection{Resonance Sweep}
+
+For a convincing Crybaby effect, a relatively \textbf{high resonance} is preferred. This is because the "Wah" sound mimics human speech formants (specifically the transition from vowel 'u' to 'a'). A high Q-factor creates a sharp, narrow peak in the frequency spectrum, which is necessary to emulate these resonant vocal cavities.
+
+The resonance is dynamically calculated using the following linear relationship:
+
+\begin{equation}
+    r[n] = r_{start} + r_{factor} \cdot s[n]
+\end{equation}
+
+Where:
+\begin{itemize}
+    \item $r[n]$ is the current resonance (Q) value.
+    \item $r_{start}$ is the base resonance value (0.85)
+    \item $r_{factor}$ is the \textbf{Resonance Sensitivity Factor}. This parameter defines the \textit{depth} of the modulation, determining how much the sharpness of the filter increases as the sweep reaches its peak.
+    \item $s[n]$ is the current value of the triangular sweep (0.0 to 1.0).
+\end{itemize}
+
+\subsection{Cutoff Sweep}
+
+The core of the effect lies in moving the center frequency of the band-pass filter. I explored two distinct methods for controlling this movement.
+
+\subsubsection{Periodic Exponential Cutoff}
+
+My first implementation used an automatic Low Frequency Oscillator (LFO) to move the filter. The triangular sweep control signal $s[n]$ was mapped to the frequency domain using an exponential curve:
+
+\begin{equation}
+    f_c[n] = f_{start} \cdot \left( \frac{f_{end}}{f_{start}} \right)^{s[n]}
+\end{equation}
+
+The exponential function is used because human hearing perceives pitch logarithmically. If a linear sweep were used (e.g., adding a fixed number of Hertz per step), the filter would appear to move very slowly through the bass frequencies and rush instantly through the high frequencies. An exponential sweep ensures that the musical interval (octaves per second) remains constant, resulting in a smooth, natural-sounding transition across the entire range.
+
+\subsubsection{Envelope Follower Cutoff (Auto-Wah)}
+
+The periodic LFO attempt successfully created a wah sound, but it was robotic and disconnected from the musical performance. To resolve this, I switched to an \textbf{Auto-Wah} architecture.
+
+Instead of a pre-calculated triangular wave, this method uses the \textbf{Envelope Follower} described in the previous section to drive the cutoff frequency. This allows the effect to react to playing dynamics in real-time: picking a string harder generates a higher envelope value, which opens the filter to a higher frequency immediately. This dynamic interaction creates the expressive "quack" sound associated with funk music.
+
+\subsection{Results}
+
+This time a different signal was used, a raw sample from an electronic guitar interpreting \href{https://www.youtube.com/watch?v=0J2QdDbelmY}{Seven Nation Army}. Here is the spectogram for the initial sound:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/crybaby/init_raw-7arm.png}
+    \caption{Raw guitar sample}
+    \label{fig:init_raw-7arm}
+\end{figure}
+
+For all results the following were kept constant:
+
+\begin{itemize}
+    \item \textbf{Base resonance: 0.85}
+    \item \textbf{Resonance factor: 0.12}
+\end{itemize}
+
+Here is the spectogram for the periodic exponential crybaby
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/crybaby/exp_raw-7army.png}
+    \caption{Crybaby effect using periodic exponential sweep, sweep speed=1.5 Hz/s, cutoff start=450Hz, cutoff end=2500Hz}
+    \label{fig:crybaby_exp_raw-7army}
+\end{figure}
+
+Here is the spectogram for the envelope follower crybaby:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/crybaby/ev_fol_raw-7army.png}
+    \caption{Crybaby effect using envelope follower, attack period=10ms, release period=100ms}
+    \label{fig:crybaby_ev_fol_raw-7army}
+\end{figure}
+
 \end{document}

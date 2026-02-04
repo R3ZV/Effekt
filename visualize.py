@@ -37,24 +37,21 @@ def draw_spectogram(samples: np.ndarray, sample_rate: int, title: str, save_path
 curr_path = Path(os.path.dirname(__file__))
 
 output_path = curr_path / "output"
-input_path = curr_path / "input"
+input_path = curr_path / "samples"
 
 # Filter
-filter = "binaural_rotation"
-# resonance = 0.85
-# start_cutoff_sweep = 450
-# end_cutoff_sweep = 2200
-# k_knob = 0.5
-rotation_speed = 0.7
-woodworth_delay = True
-apply_svf = False
-params_str = f"{rotation_speed:.2f}_{woodworth_delay:.2f}_{apply_svf:.2f}"
-# filter_type = "band_pass"
+filter = "SVF"
+resonance = 0.85
+start_cutoff_sweep = 450
+end_cutoff_sweep = 2501
+k_knob = 0.5
+params_str = f"{resonance:.2f}_{k_knob:.2f}_{start_cutoff_sweep:.2f}_{end_cutoff_sweep:.2f}"
+filter_type = "band_pass"
 
-audio_name = "crawling_scream"
+audio_name = "raw-7army"
 audio_file_name = "audio.wav"
 
-audio_out_dir = output_path / filter / audio_name / params_str
+audio_out_dir = output_path / filter / audio_name / params_str / filter_type
 audio_out_file_path = audio_out_dir / audio_file_name
 
 audio_in_dir = input_path / audio_name

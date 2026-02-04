@@ -6,23 +6,23 @@
 
 auto AudioFileHandler::open_read(const std::string &path) -> bool {
     file_in = sf_open(path.c_str(), SFM_READ, &sf_info_in);
-        if (!file_in) {
-            std::print(stderr, "Error opening file: {}\n", sf_strerror(NULL));
-            return false;
-        }
-        return true;
+    if (!file_in) {
+        std::print(stderr, "Error opening file: {}\n", sf_strerror(NULL));
+        return false;
+    }
+    return true;
 }
 
-auto AudioFileHandler::open_write(const std::string& path, uint8_t channel_count) -> bool {
-        this->sf_info_out = sf_info_in;
-        if (channel_count > 0)
-            sf_info_out.channels = channel_count;
-        file_out = sf_open(path.c_str(), SFM_WRITE, &sf_info_out);
-        if (!file_out) {
-            std::print(stderr, "Error opening file: {}\n", sf_strerror(NULL));
-            return false;
-        }
-        return true;
+auto AudioFileHandler::open_write(const std::string &path,
+                                  uint8_t channel_count) -> bool {
+    this->sf_info_out = sf_info_in;
+    if (channel_count > 0) sf_info_out.channels = channel_count;
+    file_out = sf_open(path.c_str(), SFM_WRITE, &sf_info_out);
+    if (!file_out) {
+        std::print(stderr, "Error opening file: {}\n", sf_strerror(NULL));
+        return false;
+    }
+    return true;
 }
 
 auto AudioFileHandler::read_frames(float *buffer, sf_count_t frames)

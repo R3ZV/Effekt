@@ -9,10 +9,16 @@ class AudioFileHandler {
     SNDFILE *file_in, *file_out;
     SF_INFO sf_info_in, sf_info_out;
 
-public:
    public:
-    AudioFileHandler() : file_in(nullptr), file_out(nullptr) { sf_info_in = {0}; sf_info_out = {0};}
-    ~AudioFileHandler() { close(true); close(false);}
+   public:
+    AudioFileHandler() : file_in(nullptr), file_out(nullptr) {
+        sf_info_in = {0};
+        sf_info_out = {0};
+    }
+    ~AudioFileHandler() {
+        close(true);
+        close(false);
+    }
 
     // opens the file to be read from
     auto open_read(const std::string &path) -> bool;
