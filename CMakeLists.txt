@@ -32,9 +32,11 @@ set(SOURCE_FILES
 
     src/cabinet.cpp
     src/overdrive.cpp
+    src/binaural-panner.cpp
+    src/stereo-to-mono.cpp
+    src/bit-crusher.cpp
     src/pitch_shifter.cpp
 )
-
 
 add_executable(AudioProcessor ${SOURCE_FILES})
 

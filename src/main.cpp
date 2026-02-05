@@ -14,6 +14,7 @@
 #include "crybaby.h"
 #include "overdrive.h"
 #include "svf.h"
+#include "bit-crusher.h"
 
 namespace fs = std::filesystem;
 
@@ -21,7 +22,7 @@ auto main() -> int {
     fs::path root_dir = fs::path(__FILE__).parent_path().parent_path();
 
     // Define params for i/o paths
-    std::string audio_name = "raw-7army";
+    std::string audio_name = "crawling_scream";
     std::string audio_file_name = "audio.wav";
 
     // Define i.o paths
@@ -41,7 +42,7 @@ auto main() -> int {
 
     // Define output file and create output directory
     fs::path audio_out_path =
-        root_dir / "output" / "combinations" / audio_name / audio_file_name;
+        root_dir / "output" / "combination"/ audio_name / audio_file_name;
     fs::create_directories(audio_out_path.parent_path());
 
     if (!fh.open_write(audio_out_path.string(), out_channel_count)) {
@@ -56,6 +57,7 @@ auto main() -> int {
 
     filters.push_back(new CrybabyEffect(channels, sample_rate));
     filters.push_back(new Overdrive(1000.0f, sample_rate, channels));
+    filters.push_back(bitcrusher); // Not a grea addition :)))
     filters.push_back(new CabinetConvolver("../samples/ir.wav", FRAMES_COUNT));
     filters.push_back(new BinauralPanner(channels, sample_rate));
 
