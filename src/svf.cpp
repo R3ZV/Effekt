@@ -7,14 +7,10 @@
 #include <iostream>
 #include <numbers>
 
-// GOAT:
-// https://www.native-instruments.com/fileadmin/ni_media/downloads/pdf/VAFilterDesign_2.1.0.pdf
-// SMALLER: https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
 auto SVF::process(float input, float cutoff, float resonance,
                   PassFilterTypes filter_type, float shelving_fact) -> float {
-    // g is the "elemental" frequency gain
     float gain = tanf(std::numbers::pi_v<float> * (cutoff * 0.5f));
-    float damping = 2.0f - (2.0f * resonance);  // k is the damping factor
+    float damping = 2.0f - (2.0f * resonance);
 
     // The math: solving the trapezoidal integration
     float v0 = input;
