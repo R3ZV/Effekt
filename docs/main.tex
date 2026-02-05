@@ -62,6 +62,42 @@
 \tableofcontents
 \newpage
 
+\section{Abstract}
+
+This paper presents different types of audio filters, the math and physics behind their implementation, possible variations and their effect on diverse audio samples using different parameters. 
+
+\section{Samples used}
+
+\begin{itemize}
+    \item \href{https://www.youtube.com/watch?v=Gd9OhYroLN0}{Crawling, Linkin Park} (20s--34s).
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.7\linewidth]{Effekt/samples/crawling_scream_spect_ch_0.png}
+        \caption{Spectogram for crawling}
+        \label{fig:init_crawling_scream_spect_ch_0}
+    \end{figure}
+    
+    \item Electronic guitar interpretation of \href{https://www.youtube.com/watch?v=0J2QdDbelmY}{Seven Nation Army}(first 10s)
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.7\linewidth]{Effekt/samples/raw-7army.png}
+        \caption{Spectogram for raw electronic guitar Seven Nation Army}
+        \label{fig:init_7army_scream_spect_ch_0}
+    \end{figure}
+    
+    \item Calm Guitar downloaded from the internet.
+
+     \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.7\linewidth]{Effekt/samples/calm_guitar_spect_ch_0.png}
+        \caption{Spectogram for calm guitar}
+        \label{fig:init_calm_guitar_spect_ch_0}
+    \end{figure}
+    
+\end{itemize}
+
+
 \section{State Variable Filter (SVF)}
 
 \begin{figure}[H]
@@ -101,16 +137,9 @@ The parameter $g$ represents the cutoff frequency after \textbf{frequency prewar
 g = \tan\left(\frac{\text{cutoff} \cdot \pi}{2}\right)
 \]
 
-\subsection{Results: Chester's Scream Analysis}
+\subsection{Results}
 
-Below are the spectrograms for the outputs of the SVF filter applied to the vocals of Chester Bennington from Linkin Park's \href{https://www.youtube.com/watch?v=Gd9OhYroLN0}{"Crawling"} (20s--34s).
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.48\linewidth]{Effekt/crawling_scream_spect_ch_0.png}
-    \caption{Initial crawling}
-    \label{fig:svf_band_pass_ex}
-\end{figure}
+Below are the spectrograms for the outputs of the SVF filter applied to the crawling sample from Figure \ref{fig:init_crawling_scream_spect_ch_0} 
 
 \begin{figure}[H]
     \centering
@@ -254,7 +283,7 @@ The cutoff "sweeped" from normal to shadow and from shadow to rear based on the 
 
 \subsection{Results}
 
-Applying this on the same input as the SVF here are the spectograms for the binaural rotation:
+Below are the spectrograms for the outputs of the binaural rotation filter applied to the crawling sample from Figure \ref{fig:init_crawling_scream_spect_ch_0} 
 
 \begin{figure}[H]
     \centering
@@ -285,7 +314,6 @@ Applying this on the same input as the SVF here are the spectograms for the bina
 \end{figure}
 
 Most notable are the difference in phase between the channels and that for the version that uses low pass filtering we see the frequencies steadily decrease and increase.
-
 
 \section{Envelope Follower / Peak Detector}
 
@@ -368,23 +396,14 @@ Instead of a pre-calculated triangular wave, this method uses the \textbf{Envelo
 
 \subsection{Results}
 
-This time a different signal was used, a raw sample from an electronic guitar interpreting \href{https://www.youtube.com/watch?v=0J2QdDbelmY}{Seven Nation Army}. Here is the spectogram for the initial sound:
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.5\linewidth]{Effekt/crybaby/init_raw-7arm.png}
-    \caption{Raw guitar sample}
-    \label{fig:init_raw-7arm}
-\end{figure}
-
-For all results the following were kept constant:
+For all results the following parameters were kept constant:
 
 \begin{itemize}
     \item \textbf{Base resonance: 0.85}
     \item \textbf{Resonance factor: 0.12}
 \end{itemize}
 
-Here is the spectogram for the periodic exponential crybaby
+Below are the spectrograms for the outputs of the crybaby effect applied to the raw electronic guitar interpretation of Seven Nation Army, Figure \ref{fig:init_7army_scream_spect_ch_0} 
 
 \begin{figure}[H]
     \centering
@@ -392,8 +411,6 @@ Here is the spectogram for the periodic exponential crybaby
     \caption{Crybaby effect using periodic exponential sweep, sweep speed=1.5 Hz/s, cutoff start=450Hz, cutoff end=2500Hz}
     \label{fig:crybaby_exp_raw-7army}
 \end{figure}
-
-Here is the spectogram for the envelope follower crybaby:
 
 \begin{figure}[H]
     \centering
@@ -435,12 +452,21 @@ Playing around with the number of bits, I observed that leaving it between 0 and
 
 Changing the sampling rate shows a more rapid change that "worsens the quality of the signal" through aliasing. Interestingly, as I decreased the sample rate, Chester's voice became more aggressive. This is due to the aliasing adding metallic, grit-like frequencies to the mid-range, which emphasizes the "fry" in the vocal delivery.
 
-Here is the spectogram for the one that sounded "the best":
+Here is the spectogram for the one that sounded "the best" on crawling (spectogram for initial sample: Figure \ref{fig:init_crawling_scream_spect_ch_0}):
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.5\linewidth]{Effekt/Bitcrusher/crawling_scream_ch0.png}
-    \caption{Bitcrusher downsampling=8 samples, bit count=8}
+    \caption{Bitcrusher on crawling, downsampling=8 samples, bit count=8}
+    \label{fig:bitcrusher_crawling_scream_ch0}
+\end{figure}
+
+But I think this effect was better suited for the calm guitar sample (spectogram for initial sample: Figure \ref{fig:init_calm_guitar_spect_ch_0}):
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/Bitcrusher/calm_guitar_ch_0.png}
+    \caption{Bitcrusher on calm guitar, downsampling=8 samples, bit count=8}
     \label{fig:bitcrusher_crawling_scream_ch0}
 \end{figure}
 
@@ -470,6 +496,18 @@ For this specific implementation, the impulse response captures a classic rock c
     \item \textbf{Microphone:} Shure SM57
     \item \textbf{Position:} Cap Edge, 0.5 inches distance
 \end{itemize}
+
+\subsection{Results}
+
+Here is the resulted spectogram after applying the filter on crawling (spectogram for initial sample: Figure \ref{fig:init_crawling_scream_spect_ch_0})
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/cabinet/crawling_scream_spect.png}
+    \caption{Cabinet applied on crawling}
+    \label{fig:cabinet_crawling_scream_spect}
+\end{figure}
+
 \section{Overdrive Effect (Diode Clipper)}
 
 \subsection{Concept}
@@ -524,6 +562,17 @@ We solve for $v$ using the \textbf{Newton-Raphson method}, an iterative algorith
 $$ v_{n+1} = v_n - \frac{f(v_n)}{f'(v_n)} $$
 
 Once $v$ is found, the reflected wave $b$ is calculated via $b = 2v - a$, which is returned to the circuit loop.
+
+\subsection{Results}
+
+Here is the resulted spectogram after applying the filter on the calm guitar sample (spectogram for initial sample: Figure \ref{fig:init_calm_guitar_spect_ch_0})
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/overdrive/calm_guitar_spect.png}
+    \caption{Overdrive applied on calm guitar}
+    \label{fig:overdrive_calm_guitar}
+\end{figure}
 
 \section{Pitch Shifter Effect (Granular Synthesis)}
 
@@ -605,6 +654,24 @@ The final output $y[n]$ is the sum of the two overlapping heads. Because Head B 
     \phi_B &= (\phi[n] + 0.5) \pmod 1 \\
     y[n] &= \underbrace{(y_{\phi_A} \cdot w(\phi_A))}_{\text{Head A}} + \underbrace{(y_{\phi_B} \cdot w(\phi_B))}_{\text{Head B}}
 \end{align*}
+
+\subsection{Results}
+
+Here is the resulted spectogram after applying the filter on the crawling sample (spectogram for initial sample: Figure \ref{fig:init_crawling_scream_spect_ch_0})
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/pitch_shifter/crawling_low_pitch_spect.png}
+    \caption{Pitch-shifter low pitch applied on crawling}
+    \label{fig:low_pitch_shifter_crawling}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/pitch_shifter/crawling_high_pitch_spect.png}
+    \caption{Pitch-shifter high pitch applied on crawling}
+    \label{fig:high_pitch_shifter_crawling}
+\end{figure}
 
 \section{References}
 

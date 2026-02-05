@@ -152,7 +152,7 @@ auto CabinetConvolver::apply(const std::vector<float>& input)
 }
 
 auto CabinetConvolver::get_filter_name() -> std::string {
-    return "pitchshifter";
+    return "cabinet";
 }
 
 auto CabinetConvolver::get_output_dir(const std::string& audio_name)

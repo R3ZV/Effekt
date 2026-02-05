@@ -17,7 +17,7 @@ private:
     float max_downsample;
     Bitcrusher bc_left, bc_right;
 public:
-    BitcrusherFilter(uint8_t ch_count, uint8_t max_bits = 12, float max_downsample = 8.0f)
+    BitcrusherFilter(uint8_t ch_count, uint8_t max_bits = 8, float max_downsample = 8.0f)
         : ch_count(ch_count), max_bits(max_bits), max_downsample(max_downsample){}
 
     auto apply(const std::vector<float>& input) -> std::vector<float> override;
