@@ -29,12 +29,10 @@ set(SOURCE_FILES
     src/envelope_follower.cpp
     src/binaural_panner.cpp
     src/stereo_to_mono.cpp
+    src/bit-crusher.cpp
 
     src/cabinet.cpp
     src/overdrive.cpp
-    src/binaural-panner.cpp
-    src/stereo-to-mono.cpp
-    src/bit-crusher.cpp
     src/pitch_shifter.cpp
 )
 

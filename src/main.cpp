@@ -15,6 +15,7 @@
 #include "overdrive.h"
 #include "svf.h"
 #include "bit-crusher.h"
+#include "pitch_shifter.h"
 
 namespace fs = std::filesystem;
 
@@ -30,7 +31,7 @@ auto main() -> int {
         root_dir / "samples" / audio_name / audio_file_name;
 
     AudioFileHandler fh;
-    const uint8_t out_channel_count = 2;
+    const uint8_t out_channel_count = 0;
 
     if (!fh.open_read(audio_in_path.string())) {
         std::print("[ERROR]: Failed to open file {}\n", audio_in_path.string());
@@ -40,9 +41,19 @@ auto main() -> int {
     int channels = fh.get_channels();
     float sample_rate = fh.get_sample_rate();
 
+    const size_t FRAMES_COUNT = 4096;
+    std::vector<AMPFilter*> filters;
+
+    filters.push_back(new BitcrusherFilter(channels, 8, 8));
+    filters.push_back(new CrybabyEffect(channels, sample_rate));
+    filters.push_back(new Overdrive(1000.0f, sample_rate, channels));
+    filters.push_back(new PitchShifter(1.5, sample_rate, channels));
+    filters.push_back(new CabinetConvolver("../samples/ir.wav", FRAMES_COUNT));
+    filters.push_back(new BinauralPanner(channels, sample_rate));
+
     // Define output file and create output directory
     fs::path audio_out_path =
-        root_dir / "output" / "combination"/ audio_name / audio_file_name;
+        root_dir / "output" / "combination" / audio_name / audio_file_name;
     fs::create_directories(audio_out_path.parent_path());
 
     if (!fh.open_write(audio_out_path.string(), out_channel_count)) {
@@ -51,15 +62,6 @@ auto main() -> int {
         return -1;
     }
     std::print("[DEBUG]: File opened: {}\n", audio_out_path.string());
-
-    const size_t FRAMES_COUNT = 4096;
-    std::vector<AMPFilter*> filters;
-
-    filters.push_back(new CrybabyEffect(channels, sample_rate));
-    filters.push_back(new Overdrive(1000.0f, sample_rate, channels));
-    filters.push_back(bitcrusher); // Not a grea addition :)))
-    filters.push_back(new CabinetConvolver("../samples/ir.wav", FRAMES_COUNT));
-    filters.push_back(new BinauralPanner(channels, sample_rate));
 
     size_t read_count = 0;
     std::vector<float> input_buffer(FRAMES_COUNT * channels);
