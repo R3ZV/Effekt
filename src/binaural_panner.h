@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "amp_filter.h"
-#include "stereo-to-mono.cpp"
+#include "stereo_to_mono.cpp"
 #include "svf.h"
 
 class BinauralPanner : public AMPFilter {
@@ -15,9 +15,7 @@ class BinauralPanner : public AMPFilter {
                    float rotation_speed = 0.7);
 
     auto apply(const std::vector<float>& input) -> std::vector<float> override;
-
     auto get_output_dir(const std::string& audio_name) -> std::string override;
-
     auto get_filter_name() -> std::string override;
 
    private:
@@ -34,9 +32,10 @@ class BinauralPanner : public AMPFilter {
 
     StereoToMono mono_conv;
 
-    float _get_simple_delay(float angle_rad, uint32_t sample_rate);
-    float _get_woodworth_delay(float relative_angle_rad, uint32_t sample_rate);
-    float _read_with_interpolation(float* buf, float delay);
+    auto _get_simple_delay(float angle_rad, uint32_t sample_rate) -> float;
+    auto _get_woodworth_delay(float relative_angle_rad, uint32_t sample_rate)
+        -> float;
+    auto _read_with_interpolation(float* buf, float delay) -> float;
     void _apply_svf(float sin_val, float cos_val, float& in_out_sample_l,
                     float& in_out_sample_r);
     void _set_delay_buffers(float input);

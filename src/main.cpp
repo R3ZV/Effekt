@@ -9,7 +9,7 @@
 
 #include "amp_filter.h"
 #include "audio_handler.h"
-#include "binaural-panner.h"
+#include "binaural_panner.h"
 #include "cabinet.h"
 #include "crybaby.h"
 #include "overdrive.h"
@@ -19,9 +19,6 @@
 namespace fs = std::filesystem;
 
 auto main() -> int {
-    std::print("[DEBUG]: HELLO FROM MAIN\n");
-
-    // Define root path
     fs::path root_dir = fs::path(__FILE__).parent_path().parent_path();
 
     // Define params for i/o paths
@@ -35,7 +32,6 @@ auto main() -> int {
     AudioFileHandler fh;
     const uint8_t out_channel_count = 2;
 
-    // Open input file
     if (!fh.open_read(audio_in_path.string())) {
         std::print("[ERROR]: Failed to open file {}\n", audio_in_path.string());
         return -1;
@@ -44,17 +40,11 @@ auto main() -> int {
     int channels = fh.get_channels();
     float sample_rate = fh.get_sample_rate();
 
-    // Define filter
-    BinauralPanner* binaural_panner = new BinauralPanner(channels, sample_rate);
-    CrybabyEffect* crybaby = new CrybabyEffect(channels, sample_rate);
-    BitcrusherFilter* bitcrusher = new BitcrusherFilter(channels);
-
     // Define output file and create output directory
     fs::path audio_out_path =
         root_dir / "output" / "combination"/ audio_name / audio_file_name;
     fs::create_directories(audio_out_path.parent_path());
 
-    // Open output file
     if (!fh.open_write(audio_out_path.string(), out_channel_count)) {
         std::print("[ERROR]: Failed to open file {}\n",
                    audio_out_path.string());
@@ -65,12 +55,11 @@ auto main() -> int {
     const size_t FRAMES_COUNT = 4096;
     std::vector<AMPFilter*> filters;
 
-    // DONT PLAY CRYBABY AFTER CABINET, IT WILL BE NOISE!
-    filters.push_back(crybaby);
+    filters.push_back(new CrybabyEffect(channels, sample_rate));
     filters.push_back(new Overdrive(1000.0f, sample_rate, channels));
     filters.push_back(bitcrusher); // Not a grea addition :)))
     filters.push_back(new CabinetConvolver("../samples/ir.wav", FRAMES_COUNT));
-    filters.push_back(binaural_panner);  // Probably best to leave as the last
+    filters.push_back(new BinauralPanner(channels, sample_rate));
 
     size_t read_count = 0;
     std::vector<float> input_buffer(FRAMES_COUNT * channels);

@@ -1,4 +1,4 @@
-#include "envelope-follower.h"
+#include "envelope_follower.h"
 
 #include <cmath>
 
@@ -9,12 +9,12 @@
 
 EnvelopeFollower::EnvelopeFollower(float sampleRate) : fs(sampleRate) {
     envelope = 0.0f;
-    setParams(10.0f, 100.0f);
+    set_params(10.0f, 100.0f);
 }
 
 // attack_ms:  How fast to track a volume spike
 // release_ms: How fast to drop when silence hits
-void EnvelopeFollower::setParams(float attack_ms, float release_ms) {
+auto EnvelopeFollower::set_params(float attack_ms, float release_ms) -> void {
     // Convert milliseconds to seconds
     float att_sec = attack_ms / 1000.0f;
     float rel_sec = release_ms / 1000.0f;
@@ -32,7 +32,7 @@ void EnvelopeFollower::setParams(float attack_ms, float release_ms) {
         release_coef = 0.0f;  // Instant release
 }
 
-float EnvelopeFollower::process(float input) {
+auto EnvelopeFollower::process(float input) -> float {
     float absInput = std::abs(input);
 
     // If the signal is higher than current envelope -> Attack Phase

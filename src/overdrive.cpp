@@ -1,6 +1,7 @@
 #include "overdrive.h"
 
 #include <cmath>
+#include <filesystem>
 #include <vector>
 
 Overdrive::Overdrive(float resistance, float sr, int channels)
@@ -59,4 +60,15 @@ auto Overdrive::scattering(float a_in) -> float {
 
     // WDF Scattering: b = 2*v - a
     return 2.0f * v - a_in;
+}
+
+auto Overdrive::get_filter_name() -> std::string { return "overdrive"; }
+
+auto Overdrive::get_output_dir(const std::string& audio_name) -> std::string {
+    namespace fs = std::filesystem;
+    std::string params_str = "default-params";
+
+    fs::path audio_out_path =
+        fs::path(get_filter_name()) / audio_name / params_str;
+    return audio_out_path.string();
 }
