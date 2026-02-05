@@ -58,7 +58,7 @@ audio_in_dir = input_path / audio_name
 audio_in_file_path = audio_in_dir / audio_file_name
 
 # Load the file
-sample_rate, samples = wavfile.read(audio_out_file_path)
+sample_rate, samples = wavfile.read("output\\bitcrusher\\crawling_scream\\12.00_12.00\\audio.wav")
 
 # Check if the file is integer-based (standard for WAV) and normalize to -1.0 to 1.0
 if samples.dtype == np.int16:
@@ -69,7 +69,7 @@ if len(samples.shape) > 1:
     sample_count, ch_count = samples.shape
     for i in range(ch_count):
         draw_spectogram(
-            samples[:, i], sample_rate, f"{audio_name}_spect_ch_{i}", str(audio_out_dir)
+            samples[:, i], sample_rate, f"{audio_name}_spect_ch_{i}", str("output\\bitcrusher\\crawling_scream\\12.00_12.00")
         )
 else:
-    draw_spectogram(samples, sample_rate, f"{audio_name}_mono", str(audio_out_dir))
+    draw_spectogram(samples, sample_rate, f"{audio_name}_mono", str("output\\bitcrusher\\crawling_scream\\12.00_12.00"))

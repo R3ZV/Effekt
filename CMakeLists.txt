@@ -30,8 +30,8 @@ set(SOURCE_FILES
     src/overdrive.cpp
     src/binaural-panner.cpp
     src/stereo-to-mono.cpp
+    src/bit-crusher.cpp
 )
-
 
 add_executable(AudioProcessor ${SOURCE_FILES})
 

@@ -107,6 +107,13 @@ Below are the spectrograms for the outputs of the SVF filter applied to the voca
 
 \begin{figure}[H]
     \centering
+    \includegraphics[width=0.48\linewidth]{Effekt/crawling_scream_spect_ch_0.png}
+    \caption{Initial crawling}
+    \label{fig:svf_band_pass_ex}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
     \includegraphics[width=0.48\linewidth]{Effekt/SVF/band_pass_crawling.png}
     \caption{Band-pass output (Cutoff: 0.15, Resonance: 0.5)}
     \label{fig:svf_band_pass_ex}
@@ -146,7 +153,7 @@ The variable $R$ represents the \textbf{damping factor} (the mathematical invers
 
 When resonance is high, an intense line appears at the cutoff frequency.
 
-\section{Secondary Filter Types}
+\subsection{Secondary Filter Types}
 
 By linear combination of the primary SVF outputs, we can derive specialized filters.
 
@@ -394,5 +401,209 @@ Here is the spectogram for the envelope follower crybaby:
     \caption{Crybaby effect using envelope follower, attack period=10ms, release period=100ms}
     \label{fig:crybaby_ev_fol_raw-7army}
 \end{figure}
+
+\section{Bitcrusher}
+
+The Bitcrusher is a digital-only effect that intentionally degrades audio quality by reducing both the vertical resolution (amplitude) and horizontal resolution (time) of the signal.
+
+\subsection{Quantization (Bit Depth Reduction)}
+The "bit" in "bitcrusher" refers to the binary representation of audio. In digital systems, dynamic range is defined by bit depth. We use \textbf{bits} as the parameter rather than direct integer levels for two primary reasons:
+\begin{itemize}
+    \item \textbf{Perceptual Scaling:} Human hearing is logarithmic. Adding 1 bit of resolution consistently provides a 6dB improvement in the signal-to-noise ratio, making bits a more musically intuitive unit than raw steps.
+    \item \textbf{Hardware Emulation:} Using bits allows the filter to accurately mimic specific vintage hardware, such as 8-bit samplers or 12-bit drum machines, which are defined by their hardware architecture.
+\end{itemize}
+
+The formula for quantization of a normalized signal $x \in [-1, 1]$ is:
+
+\[ y = \frac{\text{round}(x \cdot 2^{b-1})}{2^{b-1}} \]
+
+\begin{itemize}
+    \item \textbf{$y$}: output signal
+    \item \textbf{$x$}: input signal
+    \item \textbf{$b$}: number of bits (resolution)
+\end{itemize}
+
+\subsection{Dry/Wet Interpolation}
+At the end of the processing chain, an interpolation is performed between the original input ($x$) and the crushed output ($y$). This is implemented to provide a "Mix" control because:
+\begin{itemize}
+    \item \textbf{Parallel Processing:} Bitcrushing is extremely destructive. Mixing in the "Dry" signal allows the listener to retain the fundamental clarity and transient punch of the original audio while adding the "crushed" texture as an overlay.
+    \item \textbf{Harmonic Control:} Since bitcrushing adds significant high-frequency noise and aliasing, interpolation acts as a manual intensity knob, making the effect usable in a musical mix without over-powering other instruments.
+\end{itemize}
+
+\subsection{Results/Observations}
+Playing around with the number of bits, I observed that leaving it between 0 and 4 does not offer much change because at such low resolution, the signal essentially becomes a square wave or pure noise. The same can be said about going after 16; since 16-bit is CD quality, the human ear struggles to hear further increases in resolution in a typical listening environment. 
+
+Changing the sampling rate shows a more rapid change that "worsens the quality of the signal" through aliasing. Interestingly, as I decreased the sample rate, Chester's voice became more aggressive. This is due to the aliasing adding metallic, grit-like frequencies to the mid-range, which emphasizes the "fry" in the vocal delivery.
+
+Here is the spectogram for the one that sounded "the best":
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Effekt/Bitcrusher/crawling_scream_ch0.png}
+    \caption{Bitcrusher downsampling=8 samples, bit count=8}
+    \label{fig:bitcrusher_crawling_scream_ch0}
+\end{figure}
+
+\section{Cabinet Simulation via Convolution}
+
+\subsection{Concept}
+To implement a realistic guitar cabinet simulation in software, we utilize \textbf{Convolution}.
+This way we can apply the acoustic characteristics of a physical speaker cabinet
+to a raw digital audio signal.
+
+The core component of this simulation is the \textbf{Impulse Response (IR)}.
+An IR is an audio recording that captures how in this case a guitar cabinet
+reacts to instantaneous burst of energy.
+
+When we convolve a dry guitar signal with this IR, we are essentially triggering
+that recorded response for every single sample of the input guitar.
+
+This filters the frequency content—removing the harsh, fizzy high frequencies
+typical of direct-recorded distortion—and introduces the natural resonance and
+short reverberations of the wooden cabinet structure.
+
+\subsection{Source Material}
+For this specific implementation, the impulse response captures a classic rock configuration:
+\begin{itemize}
+    \item \textbf{Cabinet:} Marshall 1960
+    \item \textbf{Speakers:} Celestion G12M-25 "Greenbacks"
+    \item \textbf{Microphone:} Shure SM57
+    \item \textbf{Position:} Cap Edge, 0.5 inches distance
+\end{itemize}
+\section{Overdrive Effect (Diode Clipper)}
+
+\subsection{Concept}
+Overdrive creates distortion by "clipping" the peaks of an audio signal.
+In the analog world, this is often achieved using diodes.
+A diode allows current to flow easily in one direction but restricts it in the other,
+and most importantly, it has a non-linear relationship between voltage and current.
+
+When the signal volume is low, the diode acts like an open circuit, and the audio
+passes unchanged. As the volume increases, the diode begins to conduct, "squashing" the amplitude.
+This squares off the tops of the waveforms, resuling in signals that 
+we perceive as "distortion."
+
+\subsection{Implementation: Wave Digital Filters (WDF)}
+Instead of processing simple voltages, this implementation uses \textbf{Wave Digital Filters}.
+WDFs model circuits using wave variables (incident and reflected waves)
+rather than Kirchhoff variables (voltage and current).
+
+The relationship between physical variables ($v, i$) and wave variables ($a, b$)
+at a port with port resistance $R$ is defined as:
+\begin{align*}
+    a &= v + R \cdot i \quad \text{(Incident Wave)} \\
+    b &= v - R \cdot i \quad \text{(Reflected Wave)}
+\end{align*}
+
+This approach decouples the non-linear element (the diode) from the rest of
+the circuit, allowing us to solve the non-linear equation locally without
+affecting the stability of the entire system.
+
+\subsection{The Physics: Shockley Diode Equation}
+
+The behavior of the diode is governed by the \textbf{Shockley Diode Equation}:
+$$ I_d = I_s (e^{V_d / V_t} - 1) $$
+Where:
+\begin{itemize}
+    \item $I_d$: Diode current.
+    \item $V_d$: Voltage across the diode.
+    \item $I_s$: \textbf{Saturation Current}. The code uses $1\times10^{-9}$ (1nA) for
+        positive voltage and $5\times10^{-8}$ (50nA) for negative.
+        This asymmetry creates \textbf{Asymmetric Clipping}, which produces even-order harmonics,
+        often associated with smoother, "tube-like" distortion.
+    \item $V_t$: \textbf{Thermal Voltage}. Approximately $25.85\text{mV}$ at room temperature ($300\text{K}$).
+\end{itemize}
+
+\subsection{The Solver: Newton-Raphson Method}
+Because the Shockley equation is implicit (current depends on voltage, but voltage depends on current in the circuit), we cannot solve it algebraically. We must find a value for $v$ that satisfies the WDF constraints.
+
+We rearrange the WDF incident wave equation $a = v + R \cdot i(v)$ into a function $f(v)$ that equals zero:
+$$ f(v) = v + R \cdot I_s (e^{v / V_t} - 1) - a_{in} = 0 $$
+
+We solve for $v$ using the \textbf{Newton-Raphson method}, an iterative algorithm that approximates the root of a function:
+$$ v_{n+1} = v_n - \frac{f(v_n)}{f'(v_n)} $$
+
+Once $v$ is found, the reflected wave $b$ is calculated via $b = 2v - a$, which is returned to the circuit loop.
+
+\section{Pitch Shifter Effect (Granular Synthesis)}
+
+\subsection{Concept}
+This implementation utilizes \textbf{Granular Synthesis} logic to achieve pitch shifting without altering the playback duration. 
+The core principle mimics the \textbf{Doppler Effect}.
+\begin{itemize}
+    \item Playing audio back faster than it was recorded increases the pitch.
+    \item Playing it back slower decreases the pitch.
+\end{itemize}
+
+However, simply changing the playback speed would cause the audio to drift
+out of sync with the input stream (either running out of data or falling infinitely behind).
+To solve this, the audio is sliced into small segments called
+\textbf{"grains"} (typically 50--100ms).
+The read pointer moves at the desired pitch speed within a grain but periodically
+"jumps" back to align with the current write position.
+
+\subsection{Implementation: Dual Delay Line}
+A naive granular implementation creates audible discontinuities ("clicks")
+whenever the read pointer jumps.
+To eliminate these artifacts, this implementation
+uses a \textbf{Dual Delay Line} approach with cross-fading.
+
+We employ a circular buffer to store a history of the input signal.
+Two separate read heads traverse this buffer:
+\begin{itemize}
+    \item \textbf{Head A}: The primary read pointer.
+    \item \textbf{Head B}: A secondary pointer offset by exactly $180^\circ$ (0.5 phase).
+\end{itemize}
+
+As one head reaches the end of its grain (the discontinuity point), its volume is
+faded to silence, while the other head is at the peak of its volume in the middle
+of a grain. This ensures a continuous output signal.
+
+\subsection{Mathematical Formulation}
+
+\subsubsection{Phase Accumulator}
+The position of the read heads is driven by a normalized phasor $\phi(n)$
+that ranges from $0.0$ to $1.0$. The rate of change ($\Delta \phi$) determines the pitch shift:
+
+$$ \Delta \phi = \frac{1.0 - P}{N_{grain}} $$
+
+Where:
+\begin{itemize}
+    \item $P$: The pitch factor (e.g., $2.0$ for an octave up, $0.5$ for an octave down).
+    \item $N_{grain}$: The size of a grain in samples.
+\end{itemize}
+
+The phasor for the current sample $n$ is updated as:
+$$ \phi[n] = (\phi[n-1] + \Delta \phi) \pmod 1 $$
+
+\subsubsection{Fractional Delay (Linear Interpolation)}
+Since the read pointer often lands between integer sample indices (e.g., index 405.7), we must approximate the value using \textbf{Linear Interpolation} to avoid quantization noise (aliasing):
+
+$$ y_{interp} = x[i] + \alpha \cdot (x[i+1] - x[i]) $$
+Where:
+\begin{itemize}
+    \item $i$: The integer part of the read index ($\lfloor index \rfloor$).
+    \item $\alpha$: The fractional part ($index - i$).
+\end{itemize}
+
+\subsubsection{Windowing Function}
+To smooth the transition between grains, we apply a \textbf{Triangle Window} to both read heads. The weight $w$ for a given phase $\phi$ is calculated as:
+
+$$ w(\phi) = 1.0 - 2.0 \cdot | \phi - 0.5 | $$
+
+This function creates a triangular amplitude envelope:
+\begin{itemize}
+    \item At $\phi = 0.0$ or $1.0$ (grain edges), $w = 0$ (Silence).
+    \item At $\phi = 0.5$ (grain center), $w = 1$ (Full Volume).
+\end{itemize}
+
+\subsubsection{The Final Summation}
+The final output $y[n]$ is the sum of the two overlapping heads. Because Head B is offset by phase $0.5$, the sum of their weights is constant ($w_A + w_B = 1$), resulting in unity gain:
+
+\begin{align*}
+    \phi_A &= \phi[n] \\
+    \phi_B &= (\phi[n] + 0.5) \pmod 1 \\
+    y[n] &= \underbrace{(y_{\phi_A} \cdot w(\phi_A))}_{\text{Head A}} + \underbrace{(y_{\phi_B} \cdot w(\phi_B))}_{\text{Head B}}
+\end{align*}
 
 \end{document}
